@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typer
+from importlib.metadata import version as pkg_version, PackageNotFoundError
 from rich.console import Console
 import typer
 
@@ -25,7 +26,10 @@ app.add_typer(health_app, name="health")
 
 def _version_callback(value: bool):
     if value:
-        console.print("tmiplus 0.1.0")
+        try:
+            console.print(f"tmiplus {pkg_version('tmiplus')}")
+        except PackageNotFoundError:  # pragma: no cover
+            console.print("tmiplus (version unknown)")
         raise typer.Exit()
 
 @app.callback()
@@ -44,4 +48,7 @@ def main(
 @app.command()
 def version():
     """Show version."""
-    console.print("tmiplus 0.1.0")
+    try:
+        console.print(f"tmiplus {pkg_version('tmiplus')}")
+    except PackageNotFoundError:  # pragma: no cover
+        console.print("tmiplus (version unknown)")

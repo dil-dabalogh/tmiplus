@@ -2,6 +2,8 @@ from __future__ import annotations
 import os
 import typer
 from typing import Dict, List, Tuple
+import json
+from urllib import request, error
 from rich.console import Console
 from rich.table import Table
 from tmiplus.tli.context import get_adapter
@@ -71,11 +73,62 @@ def _check_airtable_connectivity(a: AirtableAdapter) -> Tuple[bool, List[Tuple[s
     return ok, results
 
 
+def _fetch_airtable_schema_via_meta() -> Dict[str, List[str]]:
+    """Fetch Airtable base schema using the Metadata API.
+
+    Requires TMI_AIRTABLE_API_KEY and TMI_AIRTABLE_BASE_ID to be set.
+    Returns a mapping of table name -> list of field names. On error, returns {}.
+    """
+    api_key = os.getenv("TMI_AIRTABLE_API_KEY")
+    base_id = os.getenv("TMI_AIRTABLE_BASE_ID")
+    if not api_key or not base_id:
+        return {}
+    url = f"https://api.airtable.com/v0/meta/bases/{base_id}/tables"
+    req = request.Request(url, headers={
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    })
+    try:
+        with request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            out: Dict[str, List[str]] = {}
+            for t in data.get("tables", []):
+                t_name = t.get("name")
+                fields = [f.get("name") for f in t.get("fields", []) if f.get("name")]
+                if t_name:
+                    out[t_name] = fields
+            return out
+    except error.HTTPError:
+        return {}
+    except error.URLError:
+        return {}
+    except Exception:
+        return {}
+
+
 def _check_airtable_schema(a: AirtableAdapter) -> Tuple[bool, List[Tuple[str, str]]]:  # type: ignore[name-defined]
     req = _required_schema()
     results: List[Tuple[str, str]] = []
     ok = True
-    # Best-effort: union field keys from up to a few records; if no records, report unknown
+
+    # Prefer Metadata API to inspect field definitions (works even when tables are empty)
+    meta = _fetch_airtable_schema_via_meta()
+    if meta:
+        for table_name, required_fields in req.items():
+            actual_fields = set(meta.get(table_name, []))
+            if not actual_fields:
+                ok = False
+                results.append((table_name, "not found in metadata or no fields"))
+                continue
+            missing = [f for f in required_fields if f not in actual_fields]
+            if missing:
+                ok = False
+                results.append((table_name, f"missing fields: {', '.join(missing)}"))
+            else:
+                results.append((table_name, "ok"))
+        return ok, results
+
+    # Fallback: sample records (may under-report fields when records are empty/sparse)
     for name, table in [
         ("Members", a.t_members),
         ("Initiatives", a.t_inits),
@@ -88,15 +141,15 @@ def _check_airtable_schema(a: AirtableAdapter) -> Tuple[bool, List[Tuple[str, st
             for r in rows:
                 fields = r.get("fields", {}) or {}
                 seen.update(fields.keys())
-            missing = [f for f in req[name] if f not in seen]
-            if rows and missing:
-                ok = False
-                results.append((name, f"missing fields: {', '.join(missing)}"))
-            elif not rows:
-                # Could not infer; provide required list
-                results.append((name, f"no records; required: {', '.join(req[name])}"))
+            if not rows:
+                results.append((name, "no records; cannot infer fields (consider adding one row)"))
             else:
-                results.append((name, "ok"))
+                missing = [f for f in req[name] if f not in seen]
+                if missing:
+                    ok = False
+                    results.append((name, f"possibly missing fields: {', '.join(missing)} (based on sample records)"))
+                else:
+                    results.append((name, "ok"))
         except Exception as e:
             ok = False
             results.append((name, f"error: {type(e).__name__}"))

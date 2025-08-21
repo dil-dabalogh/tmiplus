@@ -125,7 +125,6 @@ class AirtableAdapter(DataAdapter):
                 type=PTOType(f.get("Type")),
                 week_start=f.get("WeekStart",""),
                 week_end=f.get("WeekEnd"),
-                week_end=f.get("WeekEnd"),
                 comment=f.get("Comment"),
             ))
         return out
@@ -161,6 +160,7 @@ class AirtableAdapter(DataAdapter):
                 member_name=f.get("MemberName",""),
                 initiative_name=f.get("InitiativeName",""),
                 week_start=f.get("WeekStart",""),
+                week_end=f.get("WeekEnd"),
             ))
         return out
 
