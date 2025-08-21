@@ -8,13 +8,17 @@ from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Manage PTO")
 
+
 @app.command()
 def list():
     a = get_adapter()
     rows = a.list_pto()
-    print_table("PTO", ["Member","Type","WeekStart","WeekEnd"], [
-        [p.member_name, p.type.value, p.week_start, p.week_end or ""] for p in rows
-    ])
+    print_table(
+        "PTO",
+        ["Member", "Type", "WeekStart", "WeekEnd"],
+        [[p.member_name, p.type.value, p.week_start, p.week_end or ""] for p in rows],
+    )
+
 
 @app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
@@ -22,6 +26,7 @@ def import_(path: str = typer.Option(..., "--path")):
     items = read_pto_csv(path)
     a.upsert_pto(items)
     typer.echo(f"Imported {len(items)} PTO records.")
+
 
 @app.command()
 def export(out: str = typer.Option(..., "--out")):

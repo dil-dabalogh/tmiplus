@@ -19,13 +19,17 @@ class DataAdapter(Protocol):
     # PTO
     def list_pto(self) -> list[PTORecord]: ...
     def upsert_pto(self, pto: list[PTORecord]) -> None: ...
-    def delete_pto(self, keys: list[tuple[str, str]]) -> None:  # (member_name, week_start)
+    def delete_pto(
+        self, keys: list[tuple[str, str]]
+    ) -> None:  # (member_name, week_start)
         ...
 
     # Assignments
     def list_assignments(self) -> list[Assignment]: ...
     def upsert_assignments(self, assignments: list[Assignment]) -> None: ...
-    def delete_assignments(self, keys: list[tuple[str, str]]) -> None:  # (member_name, week_start)
+    def delete_assignments(
+        self, keys: list[tuple[str, str]]
+    ) -> None:  # (member_name, week_start)
         ...
 
     # Helper lookups

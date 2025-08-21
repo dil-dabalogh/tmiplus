@@ -9,13 +9,26 @@ from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Manage members")
 
+
 @app.command()
 def list():
     a = get_adapter()
     rows = a.list_members()
-    print_table("Members", ["Name","Pool","Hours","Squad","Active"], [
-        [m.name, m.pool.value, m.contracted_hours, m.squad_label or "", "Y" if m.active else "N"] for m in rows
-    ])
+    print_table(
+        "Members",
+        ["Name", "Pool", "Hours", "Squad", "Active"],
+        [
+            [
+                m.name,
+                m.pool.value,
+                m.contracted_hours,
+                m.squad_label or "",
+                "Y" if m.active else "N",
+            ]
+            for m in rows
+        ],
+    )
+
 
 @app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
@@ -24,11 +37,13 @@ def import_(path: str = typer.Option(..., "--path")):
     a.upsert_members(members)
     typer.echo(f"Imported {len(members)} members.")
 
+
 @app.command()
 def export(out: str = typer.Option(..., "--out")):
     a = get_adapter()
     write_members_csv(out, a.list_members())
     typer.echo(f"Wrote {out}.")
+
 
 @app.command()
 def set_pool(member: str, pool: Pool):

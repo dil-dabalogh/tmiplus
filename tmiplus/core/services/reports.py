@@ -7,7 +7,9 @@ from tmiplus.adapters.base import DataAdapter
 from tmiplus.core.util.dates import date_to_str, iter_weeks
 
 
-def budget_distribution(adapter: DataAdapter, dfrom: date, dto: date) -> dict[str, float]:
+def budget_distribution(
+    adapter: DataAdapter, dfrom: date, dto: date
+) -> dict[str, float]:
     # Person-weeks per budget category over the window; include Unassigned/Idle
     members = adapter.list_members()
     inits = {i.name: i for i in adapter.list_initiatives()}

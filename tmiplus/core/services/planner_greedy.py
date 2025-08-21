@@ -15,6 +15,7 @@ class PlanResult:
     unstaffed: list[dict[str, object]]
     summary: dict[str, object]
 
+
 def _effective_estimate_pw(init: Initiative) -> float | None:
     if init.granular_pw is not None:
         return float(init.granular_pw)
@@ -22,8 +23,14 @@ def _effective_estimate_pw(init: Initiative) -> float | None:
         return float(init.rom_pw)
     return None
 
+
 def _rank_key(init: Initiative) -> tuple[int, str, str]:
-    return (init.priority, init.required_by or "9999-12-31", init.start_after or "0001-01-01")
+    return (
+        init.priority,
+        init.required_by or "9999-12-31",
+        init.start_after or "0001-01-01",
+    )
+
 
 def _squad_groups(members: list[Member]) -> dict[str, list[Member]]:
     groups: dict[str, list[Member]] = {}
@@ -32,11 +39,15 @@ def _squad_groups(members: list[Member]) -> dict[str, list[Member]]:
         groups.setdefault(label, []).append(m)
     return groups
 
+
 def _remaining_needed(init: Initiative, taken_pw: float, target: float) -> float:
     rem = max(0.0, target - taken_pw)
     return rem
 
-def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) -> PlanResult:
+
+def plan_greedy(
+    adapter: DataAdapter, dfrom: date, dto: date, recreate: bool
+) -> PlanResult:
     members = [m for m in adapter.list_members() if m.active]
     initiatives = [i for i in adapter.list_initiatives() if not is_done(i)]
     assignments_existing = adapter.list_assignments()
@@ -53,7 +64,9 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
     if not recreate:
         for a in assignments_existing:
             if a.initiative_name in goal_map:
-                taken_by_init_week[(a.initiative_name, a.week_start)] = taken_by_init_week.get((a.initiative_name, a.week_start), 0.0) + 0.0  # placeholder not used
+                taken_by_init_week[(a.initiative_name, a.week_start)] = (
+                    taken_by_init_week.get((a.initiative_name, a.week_start), 0.0) + 0.0
+                )  # placeholder not used
         # We'll sum taken per initiative below
     taken_by_init_total: dict[str, float] = dict.fromkeys(goal_map, 0.0)
     if not recreate:
@@ -68,14 +81,20 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
     pto = {(p.member_name, p.week_start) for p in adapter.list_pto()}
 
     # availability map (member, week) -> bool free
-    busy = {(a.member_name, a.week_start) for a in assignments_existing} if not recreate else set()
+    busy = (
+        {(a.member_name, a.week_start) for a in assignments_existing}
+        if not recreate
+        else set()
+    )
 
     # Plan result
     plan_assignments: list[Assignment] = []
     unstaffed: list[dict[str, object]] = []
 
     # Rank initiatives
-    plan_inits = sorted([i for i in initiatives if _effective_estimate_pw(i) is not None], key=_rank_key)
+    plan_inits = sorted(
+        [i for i in initiatives if _effective_estimate_pw(i) is not None], key=_rank_key
+    )
 
     # Iterate through weeks
     for wk in iter_weeks(dfrom, dto):
@@ -121,14 +140,18 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
                 # Overfill allowed: we still assign even if total_cap > rem
                 # Apply assignments
                 for m in squad_members:
-                    plan_assignments.append(Assignment(
-                        member_name=m.name,
-                        initiative_name=init.name,
-                        week_start=wk_s,
-                        week_end=week_end_from_start_str(wk_s),
-                    ))
+                    plan_assignments.append(
+                        Assignment(
+                            member_name=m.name,
+                            initiative_name=init.name,
+                            week_start=wk_s,
+                            week_end=week_end_from_start_str(wk_s),
+                        )
+                    )
                     busy.add((m.name, wk_s))
-                    taken_by_init_total[init.name] = taken_by_init_total.get(init.name, 0.0) + m.weekly_capacity_pw
+                    taken_by_init_total[init.name] = (
+                        taken_by_init_total.get(init.name, 0.0) + m.weekly_capacity_pw
+                    )
 
                 # proceed to next initiative (one squad per initiative per week in greedy pass)
                 break
@@ -139,21 +162,29 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
         taken = taken_by_init_total.get(init.name, 0.0)
         if taken < target:
             # Not fully staffed in window => remove any assignments we made for it and mark unstaffed
-            plan_assignments = [a for a in plan_assignments if a.initiative_name != init.name]
-            unstaffed.append({
-                "initiative": init.name,
-                "required_pw": target,
-                "available_pw": taken,
-                "reason": "Not enough capacity in window (no partial completion).",
-            })
+            plan_assignments = [
+                a for a in plan_assignments if a.initiative_name != init.name
+            ]
+            unstaffed.append(
+                {
+                    "initiative": init.name,
+                    "required_pw": target,
+                    "available_pw": taken,
+                    "reason": "Not enough capacity in window (no partial completion).",
+                }
+            )
 
     summary = {
         "initiatives_considered": len(plan_inits),
         "initiatives_planned": len({a.initiative_name for a in plan_assignments}),
         "initiatives_unstaffed": len(unstaffed),
         "total_person_weeks": sum(
-            next((m.weekly_capacity_pw for m in members if m.name == a.member_name), 0.0)
+            next(
+                (m.weekly_capacity_pw for m in members if m.name == a.member_name), 0.0
+            )
             for a in plan_assignments
         ),
     }
-    return PlanResult(assignments=plan_assignments, unstaffed=unstaffed, summary=summary)
+    return PlanResult(
+        assignments=plan_assignments, unstaffed=unstaffed, summary=summary
+    )

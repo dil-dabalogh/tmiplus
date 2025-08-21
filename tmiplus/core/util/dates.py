@@ -11,11 +11,14 @@ def parse_date(s: str) -> date:
         raise ValueError(f"Could not parse date: {s}")
     return d.date()
 
+
 def iso_monday(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
+
 def date_to_str(d: date) -> str:
     return d.strftime("%Y-%m-%d")
+
 
 def iter_weeks(from_date: date, to_date: date):
     cur = iso_monday(from_date)
@@ -23,6 +26,7 @@ def iter_weeks(from_date: date, to_date: date):
     while cur <= end:
         yield cur
         cur += timedelta(days=7)
+
 
 def week_end_from_start_str(week_start: str) -> str:
     """Given a week start (Monday) string YYYY-MM-DD, return the week end (Sunday) string.

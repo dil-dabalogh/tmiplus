@@ -7,15 +7,18 @@ def lint(session):
     session.run("ruff", "check", ".")
     session.run("black", "--check", ".")
 
+
 @nox.session
 def typecheck(session):
     session.install("mypy")
     session.run("mypy", "tmiplus")
 
+
 @nox.session
 def tests(session):
     session.install(".[dev]")
     session.run("pytest", "--maxfail=1", "--disable-warnings", "-q")
+
 
 @nox.session
 def all(session):

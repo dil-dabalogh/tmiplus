@@ -86,10 +86,13 @@ def _fetch_airtable_schema_via_meta() -> dict[str, list[str]]:
     if not api_key or not base_id:
         return {}
     url = f"https://api.airtable.com/v0/meta/bases/{base_id}/tables"
-    req = request.Request(url, headers={
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    })
+    req = request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
     try:
         with request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -144,12 +147,19 @@ def _check_airtable_schema(a: AirtableAdapter) -> tuple[bool, list[tuple[str, st
                 fields = r.get("fields", {}) or {}
                 seen.update(fields.keys())
             if not rows:
-                results.append((name, "no records; cannot infer fields (consider adding one row)"))
+                results.append(
+                    (name, "no records; cannot infer fields (consider adding one row)")
+                )
             else:
                 missing = [f for f in req[name] if f not in seen]
                 if missing:
                     ok = False
-                    results.append((name, f"possibly missing fields: {', '.join(missing)} (based on sample records)"))
+                    results.append(
+                        (
+                            name,
+                            f"possibly missing fields: {', '.join(missing)} (based on sample records)",
+                        )
+                    )
                 else:
                     results.append((name, "ok"))
         except Exception as e:
@@ -204,5 +214,3 @@ def check() -> None:
     if not overall:
         raise typer.Exit(code=1)
     console.print("All checks passed.")
-
-

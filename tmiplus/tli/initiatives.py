@@ -8,13 +8,27 @@ from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Manage initiatives")
 
+
 @app.command()
 def list():
     a = get_adapter()
     rows = a.list_initiatives()
-    print_table("Initiatives", ["Name","Phase","State","Priority","Budget","OwnerPools"], [
-        [i.name, i.phase.value, i.state.value, i.priority, i.budget.value, ",".join([p.value for p in i.owner_pools])] for i in rows
-    ])
+    print_table(
+        "Initiatives",
+        ["Name", "Phase", "State", "Priority", "Budget", "OwnerPools"],
+        [
+            [
+                i.name,
+                i.phase.value,
+                i.state.value,
+                i.priority,
+                i.budget.value,
+                ",".join([p.value for p in i.owner_pools]),
+            ]
+            for i in rows
+        ],
+    )
+
 
 @app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
@@ -22,6 +36,7 @@ def import_(path: str = typer.Option(..., "--path")):
     items = read_initiatives_csv(path)
     a.upsert_initiatives(items)
     typer.echo(f"Imported {len(items)} initiatives.")
+
 
 @app.command()
 def export(out: str = typer.Option(..., "--out")):

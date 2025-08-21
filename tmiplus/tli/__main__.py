@@ -26,6 +26,7 @@ app.add_typer(reports_app, name="reports")
 app.add_typer(config_app, name="config")
 app.add_typer(health_app, name="health")
 
+
 def _version_callback(value: bool):
     if value:
         try:
@@ -33,6 +34,7 @@ def _version_callback(value: bool):
         except PackageNotFoundError:  # pragma: no cover
             console.print("tmiplus (version unknown)")
         raise typer.Exit()
+
 
 @app.callback()
 def main(
@@ -46,6 +48,7 @@ def main(
     )
 ):
     """TMI Resource Planning CLI"""
+
 
 @app.command()
 def version():

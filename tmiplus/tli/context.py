@@ -15,5 +15,3 @@ def get_adapter():
     if os.getenv("TMI_AIRTABLE_API_KEY") and os.getenv("TMI_AIRTABLE_BASE_ID"):
         return AirtableAdapter()
     return MemoryAdapter()
-
-

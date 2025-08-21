@@ -41,14 +41,16 @@ class AirtableAdapter(DataAdapter):
         out: list[Member] = []
         for r in rows:
             f = r.get("fields", {})
-            out.append(Member(
-                name=f.get("Name", ""),
-                pool=Pool(f.get("Pool")),
-                contracted_hours=int(f.get("ContractedHours", 40)),
-                squad_label=f.get("SquadLabel"),
-                active=bool(f.get("Active", True)),
-                notes=f.get("Notes"),
-            ))
+            out.append(
+                Member(
+                    name=f.get("Name", ""),
+                    pool=Pool(f.get("Pool")),
+                    contracted_hours=int(f.get("ContractedHours", 40)),
+                    squad_label=f.get("SquadLabel"),
+                    active=bool(f.get("Active", True)),
+                    notes=f.get("Notes"),
+                )
+            )
         return out
 
     def upsert_members(self, members: list[Member]) -> None:
@@ -82,19 +84,27 @@ class AirtableAdapter(DataAdapter):
             owner_pools = f.get("OwnerPools", [])
             if isinstance(owner_pools, str):
                 owner_pools = [owner_pools]
-            out.append(Initiative(
-                name=f.get("Name",""),
-                phase=Phase(f.get("Phase")),
-                state=State(f.get("State")),
-                priority=int(f.get("Priority", 3)),
-                budget=BudgetCategory(f.get("Budget")),
-                owner_pools=[Pool(p) for p in owner_pools if p],
-                required_by=f.get("RequiredBy"),
-                start_after=f.get("StartAfter"),
-                rom_pw=f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW"),
-                granular_pw=f.get("Granular") if f.get("Granular") is not None else f.get("Granular_PW"),
-                ssot=f.get("SSOT"),
-            ))
+            out.append(
+                Initiative(
+                    name=f.get("Name", ""),
+                    phase=Phase(f.get("Phase")),
+                    state=State(f.get("State")),
+                    priority=int(f.get("Priority", 3)),
+                    budget=BudgetCategory(f.get("Budget")),
+                    owner_pools=[Pool(p) for p in owner_pools if p],
+                    required_by=f.get("RequiredBy"),
+                    start_after=f.get("StartAfter"),
+                    rom_pw=(
+                        f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW")
+                    ),
+                    granular_pw=(
+                        f.get("Granular")
+                        if f.get("Granular") is not None
+                        else f.get("Granular_PW")
+                    ),
+                    ssot=f.get("SSOT"),
+                )
+            )
         return out
 
     def upsert_initiatives(self, initiatives: list[Initiative]) -> None:
@@ -132,18 +142,22 @@ class AirtableAdapter(DataAdapter):
         out: list[PTORecord] = []
         for r in rows:
             f = r.get("fields", {})
-            out.append(PTORecord(
-                member_name=f.get("MemberName",""),
-                type=PTOType(f.get("Type")),
-                week_start=f.get("WeekStart",""),
-                week_end=f.get("WeekEnd"),
-                comment=f.get("Comment"),
-            ))
+            out.append(
+                PTORecord(
+                    member_name=f.get("MemberName", ""),
+                    type=PTOType(f.get("Type")),
+                    week_start=f.get("WeekStart", ""),
+                    week_end=f.get("WeekEnd"),
+                    comment=f.get("Comment"),
+                )
+            )
         return out
 
     def upsert_pto(self, pto: list[PTORecord]) -> None:
         for p in pto:
-            matches = self.t_pto.all(formula=f"AND({{MemberName}}='{p.member_name}', {{WeekStart}}='{p.week_start}')")
+            matches = self.t_pto.all(
+                formula=f"AND({{MemberName}}='{p.member_name}', {{WeekStart}}='{p.week_start}')"
+            )
             fields = {
                 "MemberName": p.member_name,
                 "Type": p.type.value,
@@ -158,7 +172,9 @@ class AirtableAdapter(DataAdapter):
 
     def delete_pto(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
-            matches = self.t_pto.all(formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')")
+            matches = self.t_pto.all(
+                formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')"
+            )
             for r in matches:
                 self.t_pto.delete(r["id"])
 
@@ -168,17 +184,21 @@ class AirtableAdapter(DataAdapter):
         out: list[Assignment] = []
         for r in rows:
             f = r.get("fields", {})
-            out.append(Assignment(
-                member_name=f.get("MemberName",""),
-                initiative_name=f.get("InitiativeName",""),
-                week_start=f.get("WeekStart",""),
-                week_end=f.get("WeekEnd"),
-            ))
+            out.append(
+                Assignment(
+                    member_name=f.get("MemberName", ""),
+                    initiative_name=f.get("InitiativeName", ""),
+                    week_start=f.get("WeekStart", ""),
+                    week_end=f.get("WeekEnd"),
+                )
+            )
         return out
 
     def upsert_assignments(self, assignments: list[Assignment]) -> None:
         for a in assignments:
-            matches = self.t_assigns.all(formula=f"AND({{MemberName}}='{a.member_name}', {{WeekStart}}='{a.week_start}')")
+            matches = self.t_assigns.all(
+                formula=f"AND({{MemberName}}='{a.member_name}', {{WeekStart}}='{a.week_start}')"
+            )
             fields = {
                 "MemberName": a.member_name,
                 "InitiativeName": a.initiative_name,
@@ -192,7 +212,9 @@ class AirtableAdapter(DataAdapter):
 
     def delete_assignments(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
-            matches = self.t_assigns.all(formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')")
+            matches = self.t_assigns.all(
+                formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')"
+            )
             for r in matches:
                 self.t_assigns.delete(r["id"])
 
@@ -224,7 +246,7 @@ class AirtableAdapter(DataAdapter):
         if isinstance(owner_pools, str):
             owner_pools = [owner_pools]
         return Initiative(
-            name=f.get("Name",""),
+            name=f.get("Name", ""),
             phase=Phase(f.get("Phase")),
             state=State(f.get("State")),
             priority=int(f.get("Priority", 3)),
@@ -233,6 +255,10 @@ class AirtableAdapter(DataAdapter):
             required_by=f.get("RequiredBy"),
             start_after=f.get("StartAfter"),
             rom_pw=f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW"),
-            granular_pw=f.get("Granular") if f.get("Granular") is not None else f.get("Granular_PW"),
+            granular_pw=(
+                f.get("Granular")
+                if f.get("Granular") is not None
+                else f.get("Granular_PW")
+            ),
             ssot=f.get("SSOT"),
         )

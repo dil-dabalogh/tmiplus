@@ -12,13 +12,20 @@ from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Manage assignments")
 
+
 @app.command()
 def list():
     a = get_adapter()
     rows = a.list_assignments()
-    print_table("Assignments", ["Member","Initiative","WeekStart","WeekEnd"], [
-        [x.member_name, x.initiative_name, x.week_start, x.week_end or ""] for x in rows
-    ])
+    print_table(
+        "Assignments",
+        ["Member", "Initiative", "WeekStart", "WeekEnd"],
+        [
+            [x.member_name, x.initiative_name, x.week_start, x.week_end or ""]
+            for x in rows
+        ],
+    )
+
 
 @app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
@@ -27,14 +34,22 @@ def import_(path: str = typer.Option(..., "--path")):
     a.upsert_assignments(items)
     typer.echo(f"Imported {len(items)} assignments.")
 
+
 @app.command()
 def export(out: str = typer.Option(..., "--out")):
     a = get_adapter()
     write_assignments_csv(out, a.list_assignments())
     typer.echo(f"Wrote {out}.")
 
+
 @app.command()
-def plan(dfrom: str, dto: str, algorithm: str = "greedy", recreate: bool = typer.Option(False, "--recreate"), out: str = typer.Option(..., "--out")):
+def plan(
+    dfrom: str,
+    dto: str,
+    algorithm: str = "greedy",
+    recreate: bool = typer.Option(False, "--recreate"),
+    out: str = typer.Option(..., "--out"),
+):
     a = get_adapter()
     if algorithm != "greedy":
         raise typer.BadParameter("Only 'greedy' implemented in prototype.")
@@ -53,7 +68,8 @@ def plan(dfrom: str, dto: str, algorithm: str = "greedy", recreate: bool = typer
                 "week_start": x.week_start,
                 "capacity_pw": None,
                 "reason": "PlannerGreedy",
-            } for x in pr.assignments
+            }
+            for x in pr.assignments
         ],
         "unstaffed": pr.unstaffed,
     }
@@ -61,17 +77,20 @@ def plan(dfrom: str, dto: str, algorithm: str = "greedy", recreate: bool = typer
     save_json(plan_doc, out.replace(".yml", ".json").replace(".yaml", ".json"))
     typer.echo(f"Wrote plan to {out} and JSON sibling.")
 
+
 @app.command()
 def apply(plan: str, dryrun: bool = typer.Option(False, "--dryrun")):
     a = get_adapter()
     doc = load_yaml(plan)
     assigned = []
     for x in doc.get("assignments", []):
-        assigned.append(Assignment(
-            member_name=x["member"],
-            initiative_name=x["initiative"],
-            week_start=x["week_start"],
-        ))
+        assigned.append(
+            Assignment(
+                member_name=x["member"],
+                initiative_name=x["initiative"],
+                week_start=x["week_start"],
+            )
+        )
     if dryrun:
         typer.echo(f"Would create {len(assigned)} assignments.")
         return

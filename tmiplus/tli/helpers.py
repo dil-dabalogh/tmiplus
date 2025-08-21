@@ -7,6 +7,7 @@ from rich.table import Table
 
 console = Console()
 
+
 def print_table(title: str, columns: list[str], rows: Iterable[Iterable[str]]):
     t = Table(title=title, show_lines=False)
     for c in columns:
