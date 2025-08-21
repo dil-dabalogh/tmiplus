@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any, cast
 
 from pyairtable import Table
 
@@ -253,10 +254,14 @@ class AirtableAdapter(DataAdapter):
                         }
                         if matches:
                             self.t_assigns.update(
-                                matches[0]["id"], name_link_fields, typecast=True
-                            )  # type: ignore[arg-type]
+                                matches[0]["id"],
+                                cast(dict[str, Any], name_link_fields),
+                                typecast=True,
+                            )
                         else:
-                            self.t_assigns.create(name_link_fields, typecast=True)  # type: ignore[arg-type]
+                            self.t_assigns.create(
+                                cast(dict[str, Any], name_link_fields), typecast=True
+                            )
                         continue
                     except Exception:
                         # Fallback to linking by record IDs
@@ -271,9 +276,11 @@ class AirtableAdapter(DataAdapter):
                             "WeekEnd": a.week_end or None,
                         }
                         if matches:
-                            self.t_assigns.update(matches[0]["id"], id_link_fields)  # type: ignore[arg-type]
+                            self.t_assigns.update(
+                                matches[0]["id"], cast(dict[str, Any], id_link_fields)
+                            )
                         else:
-                            self.t_assigns.create(id_link_fields)  # type: ignore[arg-type]
+                            self.t_assigns.create(cast(dict[str, Any], id_link_fields))
                         continue
 
     def _detect_assignment_link_fields(self) -> None:

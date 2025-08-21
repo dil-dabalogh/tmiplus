@@ -73,9 +73,13 @@ def plan(
         ],
         "unstaffed": pr.unstaffed,
     }
-    save_yaml(plan_doc, out)
-    save_json(plan_doc, out.replace(".yml", ".json").replace(".yaml", ".json"))
-    typer.echo(f"Wrote plan to {out} and JSON sibling.")
+    out_lower = out.lower()
+    if out_lower.endswith(".json"):
+        save_json(plan_doc, out)
+    else:
+        # Default to YAML when extension is .yaml/.yml or anything else
+        save_yaml(plan_doc, out)
+    typer.echo(f"Wrote plan to {out}.")
 
 
 @app.command()
