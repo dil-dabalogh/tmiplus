@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date
+from typing import cast
 
 from tmiplus.adapters.base import DataAdapter
 from tmiplus.core.util.dates import date_to_str, iter_weeks
@@ -107,4 +108,38 @@ def initiative_details(
                 "assigned_pw": float(assigned),
             }
         )
+    return rows
+
+
+def idle_capacity(
+    adapter: DataAdapter, dfrom: date, dto: date
+) -> list[dict[str, object]]:
+    """Return total unallocated capacity (person-weeks) per member within the window.
+
+    - PTO weeks are excluded (not counted as idle)
+    - Any existing assignment in a week consumes that member's whole weekly capacity
+    - Result is sorted by idle PW descending
+    """
+    members = adapter.list_members()
+    pto = {(p.member_name, p.week_start) for p in adapter.list_pto()}
+    assigns = adapter.list_assignments()
+
+    assignment_by_week: dict[tuple[str, str], str] = {
+        (a.member_name, a.week_start): a.initiative_name for a in assigns
+    }
+
+    idle_by_member: dict[str, float] = {m.name: 0.0 for m in members}
+    for wk in iter_weeks(dfrom, dto):
+        wk_s = date_to_str(wk)
+        for m in members:
+            if (m.name, wk_s) in pto:
+                continue
+            if (m.name, wk_s) in assignment_by_week:
+                continue
+            idle_by_member[m.name] += m.weekly_capacity_pw
+
+    rows: list[dict[str, object]] = [
+        {"name": name, "idle_pw": float(pw)} for name, pw in idle_by_member.items()
+    ]
+    rows.sort(key=lambda d: cast(float, d["idle_pw"]), reverse=True)
     return rows

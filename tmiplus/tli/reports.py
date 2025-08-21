@@ -4,7 +4,11 @@ from datetime import date
 
 import typer
 
-from tmiplus.core.services.reports import budget_distribution, initiative_details
+from tmiplus.core.services.reports import (
+    budget_distribution,
+    idle_capacity,
+    initiative_details,
+)
 from tmiplus.core.util.dates import parse_date
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
@@ -64,3 +68,17 @@ def budget_distribution_cmd(
             ["Initiative", "Budget", "Estimate PW", "Type", "Assigned PW"],
             rows2,
         )
+
+
+@app.command("idle")
+def idle_cmd(
+    dfrom: str = typer.Option(..., "--from"), dto: str = typer.Option(..., "--to")
+) -> None:
+    a = get_adapter()
+    f, t = parse_date(dfrom), parse_date(dto)
+    rows = idle_capacity(a, f, t)
+    print_table(
+        "Idle capacity (PW)",
+        ["Member", "Idle PW"],
+        [[r["name"], f"{r['idle_pw']:.2f}"] for r in rows],
+    )
