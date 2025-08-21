@@ -4,7 +4,7 @@ from datetime import date
 
 import typer
 
-from tmiplus.core.services.reports import budget_distribution
+from tmiplus.core.services.reports import budget_distribution, initiative_details
 from tmiplus.core.util.dates import parse_date
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
@@ -42,3 +42,25 @@ def budget_distribution_cmd(
     total = sum(data.values()) or 1.0
     rows = [[k, f"{v:.2f}", f"{(v/total*100):.1f}%"] for k, v in data.items()]
     print_table("Budget distribution (PW)", ["Category", "PW", "%"], rows)
+    # Detailed per-initiative table
+    detail = initiative_details(a, f, t)
+    if detail:
+        rows2 = [
+            [
+                d["name"],
+                d["budget"],
+                (
+                    f"{d['estimate_pw']:.1f}"
+                    if isinstance(d["estimate_pw"], int | float)
+                    else "-"
+                ),
+                d["estimate_type"],
+                f"{d['assigned_pw']:.2f}",
+            ]
+            for d in detail
+        ]
+        print_table(
+            "Initiative allocation (PW)",
+            ["Initiative", "Budget", "Estimate PW", "Type", "Assigned PW"],
+            rows2,
+        )

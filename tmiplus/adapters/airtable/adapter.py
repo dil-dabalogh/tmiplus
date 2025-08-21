@@ -156,11 +156,20 @@ class AirtableAdapter(DataAdapter):
     def list_pto(self) -> list[PTORecord]:
         rows = self.t_pto.all()
         out: list[PTORecord] = []
+
+        def _first_str(value: object) -> str:
+            if isinstance(value, str):
+                return value
+            if isinstance(value, list) and value:
+                first = value[0]
+                return str(first) if isinstance(first, str | int | float) else ""
+            return ""
+
         for r in rows:
             f = r.get("fields", {})
             out.append(
                 PTORecord(
-                    member_name=f.get("MemberName", ""),
+                    member_name=_first_str(f.get("MemberName", "")),
                     type=PTOType(f.get("Type")),
                     week_start=f.get("WeekStart", ""),
                     week_end=f.get("WeekEnd"),
@@ -198,12 +207,21 @@ class AirtableAdapter(DataAdapter):
     def list_assignments(self) -> list[Assignment]:
         rows = self.t_assigns.all()
         out: list[Assignment] = []
+
+        def _first_str(value: object) -> str:
+            if isinstance(value, str):
+                return value
+            if isinstance(value, list) and value:
+                first = value[0]
+                return str(first) if isinstance(first, str | int | float) else ""
+            return ""
+
         for r in rows:
             f = r.get("fields", {})
             out.append(
                 Assignment(
-                    member_name=f.get("MemberName", ""),
-                    initiative_name=f.get("InitiativeName", ""),
+                    member_name=_first_str(f.get("MemberName", "")),
+                    initiative_name=_first_str(f.get("InitiativeName", "")),
                     week_start=f.get("WeekStart", ""),
                     week_end=f.get("WeekEnd"),
                 )
