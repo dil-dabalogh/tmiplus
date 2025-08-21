@@ -257,7 +257,7 @@ class AirtableAdapter(DataAdapter):
                             )  # type: ignore[arg-type]
                         else:
                             self.t_assigns.create(name_link_fields, typecast=True)  # type: ignore[arg-type]
-                        return
+                        continue
                     except Exception:
                         # Fallback to linking by record IDs
                         member_id = self._member_record_id_by_name(a.member_name)
@@ -274,7 +274,7 @@ class AirtableAdapter(DataAdapter):
                             self.t_assigns.update(matches[0]["id"], id_link_fields)  # type: ignore[arg-type]
                         else:
                             self.t_assigns.create(id_link_fields)  # type: ignore[arg-type]
-                        return
+                        continue
 
     def _detect_assignment_link_fields(self) -> None:
         """Attempt to infer the Assignments table linked field names by inspecting existing records.
