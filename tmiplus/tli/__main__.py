@@ -13,6 +13,7 @@ from tmiplus.tli.pto import app as pto_app
 from tmiplus.tli.assignments import app as assignments_app
 from tmiplus.tli.reports import app as reports_app
 from tmiplus.tli.config_cmd import app as config_app
+from tmiplus.tli.health import app as health_app
 
 app.add_typer(members_app, name="members")
 app.add_typer(initiatives_app, name="initiatives")
@@ -20,6 +21,7 @@ app.add_typer(pto_app, name="pto")
 app.add_typer(assignments_app, name="assignments")
 app.add_typer(reports_app, name="reports")
 app.add_typer(config_app, name="config")
+app.add_typer(health_app, name="health")
 
 def _version_callback(value: bool):
     if value:

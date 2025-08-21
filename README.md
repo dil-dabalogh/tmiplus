@@ -23,6 +23,9 @@ export TMI_AIRTABLE_BASE_ID=appXXXXXXXXXXXXXX
 
 # 4) Show config (auto-created at ~/.tmi.yml):
 tmi config show
+
+# Health checks
+tmi health check
 ```
 
 ### Airtable Structure (Manual, non-expert guide)
