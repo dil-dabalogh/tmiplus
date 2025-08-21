@@ -70,14 +70,22 @@ def read_initiatives_csv(path: str) -> list[Initiative]:
                     required_by=(row.get("RequiredBy") or "").strip() or None,
                     start_after=(row.get("StartAfter") or "").strip() or None,
                     rom_pw=(
-                        float(row.get("ROM") or row.get("ROM_PW"))
-                        if (row.get("ROM") or row.get("ROM_PW"))
-                        else None
+                        float(str(row.get("ROM")).strip())
+                        if str(row.get("ROM") or "").strip()
+                        else (
+                            float(str(row.get("ROM_PW")).strip())
+                            if str(row.get("ROM_PW") or "").strip()
+                            else None
+                        )
                     ),
                     granular_pw=(
-                        float(row.get("Granular") or row.get("Granular_PW"))
-                        if (row.get("Granular") or row.get("Granular_PW"))
-                        else None
+                        float(str(row.get("Granular")).strip())
+                        if str(row.get("Granular") or "").strip()
+                        else (
+                            float(str(row.get("Granular_PW")).strip())
+                            if str(row.get("Granular_PW") or "").strip()
+                            else None
+                        )
                     ),
                     ssot=(row.get("SSOT") or "").strip() or None,
                 )

@@ -8,21 +8,21 @@ app = typer.Typer(help="Config management")
 
 
 @app.command()
-def show():
+def show() -> None:
     cfg = ensure_config()
-    import yaml
+    import yaml  # type: ignore[import-untyped]
 
     typer.echo(yaml.safe_dump(cfg.model_dump(), sort_keys=False, allow_unicode=True))
 
 
 @app.command("pools")
-def pools_list():
+def pools_list() -> None:
     cfg = ensure_config()
     typer.echo("Pools: " + ", ".join(cfg.pools))
 
 
 @app.command("pools-add")
-def pools_add(name: str):
+def pools_add(name: str) -> None:
     cfg = ensure_config()
     if name in cfg.pools:
         typer.echo(f"Pool already exists: {name}")
@@ -35,7 +35,7 @@ def pools_add(name: str):
 
 
 @app.command("pools-remove")
-def pools_remove(name: str):
+def pools_remove(name: str) -> None:
     cfg = ensure_config()
     if name not in cfg.pools:
         typer.echo(f"Pool not in config: {name}")

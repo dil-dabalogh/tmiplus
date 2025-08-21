@@ -56,7 +56,7 @@ class AirtableAdapter(DataAdapter):
     def upsert_members(self, members: list[Member]) -> None:
         for m in members:
             matches = self.t_members.all(formula=f"{{Name}}='{m.name}'")
-            fields = {
+            fields: dict[str, str | int | float | bool | None] = {
                 "Name": m.name,
                 "Pool": m.pool.value,
                 "ContractedHours": m.contracted_hours,
@@ -65,9 +65,9 @@ class AirtableAdapter(DataAdapter):
                 "Notes": m.notes or "",
             }
             if matches:
-                self.t_members.update(matches[0]["id"], fields)
+                self.t_members.update(matches[0]["id"], fields)  # type: ignore[arg-type]
             else:
-                self.t_members.create(fields)
+                self.t_members.create(fields)  # type: ignore[arg-type]
 
     def delete_members(self, names: list[str]) -> None:
         for n in names:
@@ -110,7 +110,7 @@ class AirtableAdapter(DataAdapter):
     def upsert_initiatives(self, initiatives: list[Initiative]) -> None:
         for i in initiatives:
             matches = self.t_inits.all(formula=f"{{Name}}='{i.name}'")
-            fields = {
+            fields: dict[str, str | int | float | bool | list[str] | None] = {
                 "Name": i.name,
                 "Phase": i.phase.value,
                 "State": i.state.value,
@@ -126,9 +126,9 @@ class AirtableAdapter(DataAdapter):
                 "SSOT": i.ssot or None,
             }
             if matches:
-                self.t_inits.update(matches[0]["id"], fields)
+                self.t_inits.update(matches[0]["id"], fields)  # type: ignore[arg-type]
             else:
-                self.t_inits.create(fields)
+                self.t_inits.create(fields)  # type: ignore[arg-type]
 
     def delete_initiatives(self, names: list[str]) -> None:
         for n in names:
@@ -158,7 +158,7 @@ class AirtableAdapter(DataAdapter):
             matches = self.t_pto.all(
                 formula=f"AND({{MemberName}}='{p.member_name}', {{WeekStart}}='{p.week_start}')"
             )
-            fields = {
+            fields: dict[str, str | int | float | bool | None] = {
                 "MemberName": p.member_name,
                 "Type": p.type.value,
                 "WeekStart": p.week_start,
@@ -166,9 +166,9 @@ class AirtableAdapter(DataAdapter):
                 "Comment": p.comment or None,
             }
             if matches:
-                self.t_pto.update(matches[0]["id"], fields)
+                self.t_pto.update(matches[0]["id"], fields)  # type: ignore[arg-type]
             else:
-                self.t_pto.create(fields)
+                self.t_pto.create(fields)  # type: ignore[arg-type]
 
     def delete_pto(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
@@ -199,16 +199,16 @@ class AirtableAdapter(DataAdapter):
             matches = self.t_assigns.all(
                 formula=f"AND({{MemberName}}='{a.member_name}', {{WeekStart}}='{a.week_start}')"
             )
-            fields = {
+            fields: dict[str, str | int | float | bool | None] = {
                 "MemberName": a.member_name,
                 "InitiativeName": a.initiative_name,
                 "WeekStart": a.week_start,
                 "WeekEnd": a.week_end or None,
             }
             if matches:
-                self.t_assigns.update(matches[0]["id"], fields)
+                self.t_assigns.update(matches[0]["id"], fields)  # type: ignore[arg-type]
             else:
-                self.t_assigns.create(fields)
+                self.t_assigns.create(fields)  # type: ignore[arg-type]
 
     def delete_assignments(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:

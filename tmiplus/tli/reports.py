@@ -32,7 +32,7 @@ def current_quarter_dates(today: date) -> tuple[date, date]:
 @app.command("budget-distribution")
 def budget_distribution_cmd(
     dfrom: str = typer.Option(None, "--from"), dto: str = typer.Option(None, "--to")
-):
+) -> None:
     a = get_adapter()
     if dfrom and dto:
         f, t = parse_date(dfrom), parse_date(dto)

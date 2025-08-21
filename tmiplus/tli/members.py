@@ -11,7 +11,7 @@ app = typer.Typer(help="Manage members")
 
 
 @app.command()
-def list():
+def list() -> None:
     a = get_adapter()
     rows = a.list_members()
     print_table(
@@ -21,7 +21,7 @@ def list():
             [
                 m.name,
                 m.pool.value,
-                m.contracted_hours,
+                str(m.contracted_hours),
                 m.squad_label or "",
                 "Y" if m.active else "N",
             ]
@@ -31,7 +31,7 @@ def list():
 
 
 @app.command(name="import")
-def import_(path: str = typer.Option(..., "--path")):
+def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     members = read_members_csv(path)
     a.upsert_members(members)
@@ -39,14 +39,14 @@ def import_(path: str = typer.Option(..., "--path")):
 
 
 @app.command()
-def export(out: str = typer.Option(..., "--out")):
+def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
     write_members_csv(out, a.list_members())
     typer.echo(f"Wrote {out}.")
 
 
 @app.command()
-def set_pool(member: str, pool: Pool):
+def set_pool(member: str, pool: Pool) -> None:
     a = get_adapter()
     ms = a.list_members()
     found = [m for m in ms if m.name == member]

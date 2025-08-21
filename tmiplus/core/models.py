@@ -59,10 +59,10 @@ class Initiative(BaseModel):
 
     @field_validator("owner_pools", mode="before")
     @classmethod
-    def _ensure_list(cls, v):
+    def _ensure_list(cls, v: object) -> list[Pool]:
         if v is None:
             return []
-        return v
+        return v  # type: ignore[return-value]
 
 
 class PTOType(str, Enum):

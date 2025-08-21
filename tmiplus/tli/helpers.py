@@ -8,7 +8,9 @@ from rich.table import Table
 console = Console()
 
 
-def print_table(title: str, columns: list[str], rows: Iterable[Iterable[str]]):
+def print_table(
+    title: str, columns: list[str], rows: Iterable[Iterable[object]]
+) -> None:
     t = Table(title=title, show_lines=False)
     for c in columns:
         t.add_column(c)

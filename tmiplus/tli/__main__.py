@@ -27,7 +27,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(health_app, name="health")
 
 
-def _version_callback(value: bool):
+def _version_callback(value: bool) -> None:
     if value:
         try:
             console.print(f"tmiplus {pkg_version('tmiplus')}")
@@ -46,12 +46,12 @@ def main(
         is_eager=True,
         callback=_version_callback,
     )
-):
+) -> None:
     """TMI Resource Planning CLI"""
 
 
 @app.command()
-def version():
+def version() -> None:
     """Show version."""
     try:
         console.print(f"tmiplus {pkg_version('tmiplus')}")

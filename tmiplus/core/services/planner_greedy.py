@@ -174,7 +174,7 @@ def plan_greedy(
                 }
             )
 
-    summary = {
+    summary: dict[str, object] = {
         "initiatives_considered": len(plan_inits),
         "initiatives_planned": len({a.initiative_name for a in plan_assignments}),
         "initiatives_unstaffed": len(unstaffed),

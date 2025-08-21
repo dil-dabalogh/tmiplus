@@ -10,7 +10,7 @@ app = typer.Typer(help="Manage initiatives")
 
 
 @app.command()
-def list():
+def list() -> None:
     a = get_adapter()
     rows = a.list_initiatives()
     print_table(
@@ -21,7 +21,7 @@ def list():
                 i.name,
                 i.phase.value,
                 i.state.value,
-                i.priority,
+                str(i.priority),
                 i.budget.value,
                 ",".join([p.value for p in i.owner_pools]),
             ]
@@ -31,7 +31,7 @@ def list():
 
 
 @app.command(name="import")
-def import_(path: str = typer.Option(..., "--path")):
+def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     items = read_initiatives_csv(path)
     a.upsert_initiatives(items)
@@ -39,7 +39,7 @@ def import_(path: str = typer.Option(..., "--path")):
 
 
 @app.command()
-def export(out: str = typer.Option(..., "--out")):
+def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
     write_initiatives_csv(out, a.list_initiatives())
     typer.echo(f"Wrote {out}.")

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from tmiplus.config.schema import RootConfig
 
@@ -17,7 +18,7 @@ def ensure_config() -> RootConfig:
         return cfg
     with open(CONFIG_PATH, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
-    return RootConfig.model_validate(data)
+    return cast(RootConfig, RootConfig.model_validate(data))
 
 
 def save_config(cfg: RootConfig) -> None:

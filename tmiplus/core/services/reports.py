@@ -21,12 +21,12 @@ def budget_distribution(
         (a.member_name, a.week_start): a.initiative_name for a in assigns
     }
 
-    totals = defaultdict(float)
+    totals: dict[str, float] = defaultdict(float)
     for wk in iter_weeks(dfrom, dto):
         wk_s = date_to_str(wk)
         # total capacity this week
         total_capacity = 0.0
-        assigned_capacity = defaultdict(float)
+        assigned_capacity: dict[str, float] = defaultdict(float)
         for m in members:
             cap = m.weekly_capacity_pw
             total_capacity += cap

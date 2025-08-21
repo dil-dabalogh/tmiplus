@@ -14,7 +14,7 @@ app = typer.Typer(help="Manage assignments")
 
 
 @app.command()
-def list():
+def list() -> None:
     a = get_adapter()
     rows = a.list_assignments()
     print_table(
@@ -28,7 +28,7 @@ def list():
 
 
 @app.command(name="import")
-def import_(path: str = typer.Option(..., "--path")):
+def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     items = read_assignments_csv(path)
     a.upsert_assignments(items)
@@ -36,7 +36,7 @@ def import_(path: str = typer.Option(..., "--path")):
 
 
 @app.command()
-def export(out: str = typer.Option(..., "--out")):
+def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
     write_assignments_csv(out, a.list_assignments())
     typer.echo(f"Wrote {out}.")
@@ -49,7 +49,7 @@ def plan(
     algorithm: str = "greedy",
     recreate: bool = typer.Option(False, "--recreate"),
     out: str = typer.Option(..., "--out"),
-):
+) -> None:
     a = get_adapter()
     if algorithm != "greedy":
         raise typer.BadParameter("Only 'greedy' implemented in prototype.")
@@ -79,7 +79,7 @@ def plan(
 
 
 @app.command()
-def apply(plan: str, dryrun: bool = typer.Option(False, "--dryrun")):
+def apply(plan: str, dryrun: bool = typer.Option(False, "--dryrun")) -> None:
     a = get_adapter()
     doc = load_yaml(plan)
     assigned = []
