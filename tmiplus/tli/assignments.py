@@ -4,7 +4,10 @@ import typer
 
 from tmiplus.core.models import Assignment
 from tmiplus.core.services.csv_io import read_assignments_csv, write_assignments_csv
+from tmiplus.core.services.planner_greedy import PlanResult as GreedyPlanResult
 from tmiplus.core.services.planner_greedy import plan_greedy
+from tmiplus.core.services.planner_ilp import PlanResult as ILPPlanResult
+from tmiplus.core.services.planner_ilp import plan_ilp
 from tmiplus.core.util.dates import parse_date
 from tmiplus.core.util.io import load_yaml, save_json, save_yaml
 from tmiplus.tli.context import get_adapter
@@ -51,10 +54,17 @@ def plan(
     out: str = typer.Option(..., "--out"),
 ) -> None:
     a = get_adapter()
-    if algorithm != "greedy":
-        raise typer.BadParameter("Only 'greedy' implemented in prototype.")
-
-    pr = plan_greedy(a, parse_date(dfrom), parse_date(dto), recreate=recreate)
+    pr: GreedyPlanResult | ILPPlanResult
+    if algorithm == "greedy":
+        pr = plan_greedy(a, parse_date(dfrom), parse_date(dto), recreate=recreate)
+    elif algorithm == "ilp":
+        try:
+            pr = plan_ilp(a, parse_date(dfrom), parse_date(dto), recreate=recreate)
+        except RuntimeError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    else:
+        raise typer.BadParameter("Invalid algorithm. Use 'greedy' or 'ilp'.")
+    reason = "PlannerILP" if algorithm == "ilp" else "PlannerGreedy"
     plan_doc = {
         "version": 1,
         "window": {"from": dfrom, "to": dto},
@@ -67,7 +77,7 @@ def plan(
                 "initiative": x.initiative_name,
                 "week_start": x.week_start,
                 "capacity_pw": None,
-                "reason": "PlannerGreedy",
+                "reason": reason,
             }
             for x in pr.assignments
         ],
