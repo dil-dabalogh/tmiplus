@@ -29,11 +29,26 @@ class AirtableAdapter(DataAdapter):
         base_id = os.getenv("TMI_AIRTABLE_BASE_ID")
         if not api_key or not base_id:
             raise RuntimeError("Missing TMI_AIRTABLE_API_KEY or TMI_AIRTABLE_BASE_ID")
+        self._api_key = api_key
+        self._base_id = base_id
 
         self.t_members = Table(api_key, base_id, MEMBERS)
         self.t_inits = Table(api_key, base_id, INITIATIVES)
         self.t_pto = Table(api_key, base_id, PTO)
         self.t_assigns = Table(api_key, base_id, ASSIGNMENTS)
+
+        # Detected or configured mapping for linked field names in Assignments table
+        # Prefer reading schema from Airtable meta API; fall back to record probing.
+        self.assign_member_link_field = os.getenv("TMI_ASSIGN_MEMBER_LINK_FIELD")
+        self.assign_initiative_link_field = os.getenv(
+            "TMI_ASSIGN_INITIATIVE_LINK_FIELD"
+        )
+        # Allow creating records without links (not recommended). Defaults to False.
+        self.assign_allow_minimal = (
+            os.getenv("TMI_ASSIGN_ALLOW_MINIMAL", "false").strip().lower() == "true"
+        )
+        # Try to detect via schema (requires PAT with schema scope); ignore errors
+        self._detect_assignment_link_fields_schema()
 
     # --------- Members
     def list_members(self) -> list[Member]:
@@ -205,10 +220,173 @@ class AirtableAdapter(DataAdapter):
                 "WeekStart": a.week_start,
                 "WeekEnd": a.week_end or None,
             }
-            if matches:
-                self.t_assigns.update(matches[0]["id"], fields)  # type: ignore[arg-type]
-            else:
-                self.t_assigns.create(fields)  # type: ignore[arg-type]
+            try:
+                if matches:
+                    self.t_assigns.update(matches[0]["id"], fields)  # type: ignore[arg-type]
+                else:
+                    self.t_assigns.create(fields)  # type: ignore[arg-type]
+            except Exception as exc:
+                # Fallback for bases where MemberName/InitiativeName are computed fields.
+                # In that case, write using linked fields instead (Member/Initiative)
+                msg = str(exc)
+                if "INVALID_VALUE_FOR_COLUMN" in msg and (
+                    "MemberName" in msg or "InitiativeName" in msg
+                ):
+                    # Determine link fields strictly via schema (no probing fallback)
+                    self._detect_assignment_link_fields_schema()
+                    m_field = self.assign_member_link_field
+                    i_field = self.assign_initiative_link_field
+                    if not (m_field and i_field):
+                        raise RuntimeError(
+                            "Assignments upsert failed: could not determine linked field names from Airtable schema. "
+                            "Ensure your API token has meta schema access and the Assignments table contains "
+                            "linked fields to Members and Initiatives."
+                        ) from exc
+
+                    # First try linking by names with typecast
+                    try:
+                        name_link_fields: dict[str, object] = {
+                            m_field: [a.member_name],
+                            i_field: [a.initiative_name],
+                            "WeekStart": a.week_start,
+                            "WeekEnd": a.week_end or None,
+                        }
+                        if matches:
+                            self.t_assigns.update(
+                                matches[0]["id"], name_link_fields, typecast=True
+                            )  # type: ignore[arg-type]
+                        else:
+                            self.t_assigns.create(name_link_fields, typecast=True)  # type: ignore[arg-type]
+                        return
+                    except Exception:
+                        # Fallback to linking by record IDs
+                        member_id = self._member_record_id_by_name(a.member_name)
+                        init_id = self._initiative_record_id_by_name(a.initiative_name)
+                        if not (member_id and init_id):
+                            raise
+                        id_link_fields: dict[str, object] = {
+                            m_field: [{"id": member_id}],
+                            i_field: [{"id": init_id}],
+                            "WeekStart": a.week_start,
+                            "WeekEnd": a.week_end or None,
+                        }
+                        if matches:
+                            self.t_assigns.update(matches[0]["id"], id_link_fields)  # type: ignore[arg-type]
+                        else:
+                            self.t_assigns.create(id_link_fields)  # type: ignore[arg-type]
+                        return
+
+    def _detect_assignment_link_fields(self) -> None:
+        """Attempt to infer the Assignments table linked field names by inspecting existing records.
+
+        Heuristic: find fields whose values are lists of record ids (strings starting with 'rec') or
+        list of objects with an 'id' that looks like a record id. Then, for the first record id in
+        each such field, try fetching it from Members and Initiatives tables to determine which is which.
+        """
+        if self.assign_member_link_field and self.assign_initiative_link_field:
+            return
+        try:
+            rows = self.t_assigns.all(max_records=10)
+        except Exception:
+            return
+        if not rows:
+            return
+        candidate_fields: set[str] = set()
+        for r in rows:
+            f = r.get("fields", {})
+            for k, v in f.items():
+                if isinstance(v, list) and v:
+                    first = v[0]
+                    rec_id: str | None = None
+                    if isinstance(first, str) and first.startswith("rec"):
+                        rec_id = first
+                    elif (
+                        isinstance(first, dict)
+                        and isinstance(first.get("id"), str)
+                        and str(first["id"]).startswith("rec")
+                    ):
+                        rec_id = str(first["id"])
+                    if rec_id:
+                        candidate_fields.add(k)
+        # Try to classify candidates by dereferencing one id
+        for field_name in candidate_fields:
+            # find a sample id for this field from the rows
+            sample_id: str | None = None
+            for r in rows:
+                vals = r.get("fields", {}).get(field_name)
+                if isinstance(vals, list) and vals:
+                    first = vals[0]
+                    if isinstance(first, str):
+                        sample_id = first
+                    elif isinstance(first, dict):
+                        sid = first.get("id")
+                        if isinstance(sid, str):
+                            sample_id = sid
+                if sample_id:
+                    break
+            if not sample_id:
+                continue
+            is_member = False
+            is_initiative = False
+            try:
+                self.t_members.get(sample_id)
+                is_member = True
+            except Exception:
+                pass
+            try:
+                self.t_inits.get(sample_id)
+                is_initiative = True
+            except Exception:
+                pass
+            if is_member and not self.assign_member_link_field:
+                self.assign_member_link_field = field_name
+            if is_initiative and not self.assign_initiative_link_field:
+                self.assign_initiative_link_field = field_name
+            if self.assign_member_link_field and self.assign_initiative_link_field:
+                break
+
+    def _detect_assignment_link_fields_schema(self) -> None:
+        """Use Airtable meta API to determine the linked field names for Assignments.
+
+        This requires API token with schema scope. If unavailable, silently skip.
+        """
+        if self.assign_member_link_field and self.assign_initiative_link_field:
+            return
+        try:
+            import requests as _rq  # type: ignore[import-untyped]
+
+            url = f"https://api.airtable.com/v0/meta/bases/{self._base_id}/tables"
+            headers = {"Authorization": f"Bearer {self._api_key}"}
+            resp = _rq.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                return
+            data = resp.json()
+            tables = data.get("tables", [])
+            assigns_tbl = next(
+                (t for t in tables if t.get("name") == ASSIGNMENTS), None
+            )
+            if not assigns_tbl:
+                return
+            # Build tableId->name mapping
+            table_id_to_name = {t.get("id"): t.get("name") for t in tables}
+            member_field: str | None = None
+            init_field: str | None = None
+            for f in assigns_tbl.get("fields", []):
+                if f.get("type") != "multipleRecordLinks":
+                    continue
+                link = f.get("options", {}).get("linkedTableId")
+                if not isinstance(link, str):
+                    continue
+                linked_name = table_id_to_name.get(link)
+                if linked_name == MEMBERS and not member_field:
+                    member_field = f.get("name")
+                if linked_name == INITIATIVES and not init_field:
+                    init_field = f.get("name")
+            if member_field and init_field:
+                self.assign_member_link_field = member_field
+                self.assign_initiative_link_field = init_field
+        except Exception:
+            return
 
     def delete_assignments(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
@@ -237,6 +415,13 @@ class AirtableAdapter(DataAdapter):
             notes=f.get("Notes"),
         )
 
+    def _member_record_id_by_name(self, name: str) -> str | None:
+        matches = self.t_members.all(formula=f"{{Name}}='{name}'")
+        if not matches:
+            return None
+        rid = matches[0].get("id")
+        return str(rid) if isinstance(rid, str) else None
+
     def initiative_by_name(self, name: str) -> Initiative | None:
         matches = self.t_inits.all(formula=f"{{Name}}='{name}'")
         if not matches:
@@ -262,3 +447,10 @@ class AirtableAdapter(DataAdapter):
             ),
             ssot=f.get("SSOT"),
         )
+
+    def _initiative_record_id_by_name(self, name: str) -> str | None:
+        matches = self.t_inits.all(formula=f"{{Name}}='{name}'")
+        if not matches:
+            return None
+        rid = matches[0].get("id")
+        return str(rid) if isinstance(rid, str) else None
