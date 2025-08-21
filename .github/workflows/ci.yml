@@ -34,14 +34,6 @@ jobs:
       - name: Run nox sessions
         run: |
           nox -s all
-
-name: CI
-
-on:
-  push:
-  pull_request:
-
-jobs:
   build:
     runs-on: ubuntu-latest
     steps:
