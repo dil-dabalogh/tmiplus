@@ -1,0 +1,7 @@
+line-length = 100
+target-version = "py311"
+extend-select = ["B", "C4", "I", "N", "UP"]
+ignore = ["E501"]
+
+[format]
+quote-style = "double"

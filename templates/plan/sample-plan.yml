@@ -1,0 +1,19 @@
+version: 1
+window:
+  from: 2025-10-01
+  to: 2025-12-31
+algorithm: greedy
+recreate: true
+generated_at: 2025-08-21T08:00:00+02:00
+summary:
+  initiatives_considered: 1
+  initiatives_planned: 1
+  initiatives_unstaffed: 0
+  total_person_weeks: 1.5
+assignments:
+  - member: "Jane Doe"
+    initiative: "ABC Revamp"
+    week_start: 2025-10-06
+    capacity_pw: 1.0
+    reason: "Greedy fill; pool=Feature; squad=Owls"
+unstaffed: []
