@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Set
 from datetime import date
 from tmiplus.adapters.base import DataAdapter
-from tmiplus.core.models import Assignment, AssignmentSource, Initiative, Member, State
-from tmiplus.core.util.dates import iter_weeks, date_to_str
+from tmiplus.core.models import Assignment, Initiative, Member, State
+from tmiplus.core.util.dates import iter_weeks, date_to_str, week_end_from_start_str
 from tmiplus.core.services.validation import allowed_pool_members, is_done
 
 @dataclass
@@ -123,8 +123,7 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
                         member_name=m.name,
                         initiative_name=init.name,
                         week_start=wk_s,
-                        source=AssignmentSource.PlannerGreedy,
-                        applied=False,
+                        week_end=week_end_from_start_str(wk_s),
                     ))
                     busy.add((m.name, wk_s))
                     taken_by_init_total[init.name] = taken_by_init_total.get(init.name, 0.0) + m.weekly_capacity_pw

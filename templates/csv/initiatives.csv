@@ -1,2 +1,2 @@
-Name,Phase,State,Priority,Budget,OwnerPools,RequiredBy,StartAfter,ROM_PW,Granular_PW,SSOT
+Name,Phase,State,Priority,Budget,OwnerPools,RequiredBy,StartAfter,ROM,Granular,SSOT
 ABC Revamp,Implementation,Open,1,Roadmap,Feature;QA,2025-11-30,2025-10-01,8,6,https://example.com/ssot

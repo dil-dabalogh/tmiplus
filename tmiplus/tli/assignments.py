@@ -5,9 +5,9 @@ from tmiplus.core.services.csv_io import read_assignments_csv, write_assignments
 from tmiplus.core.services.planner_greedy import plan_greedy
 from tmiplus.core.util.dates import parse_date
 from tmiplus.core.util.io import save_yaml, save_json, load_yaml
-from tmiplus.tli.__main__ import get_adapter
+from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
-from tmiplus.core.models import Assignment, AssignmentSource
+from tmiplus.core.models import Assignment
 
 app = typer.Typer(help="Manage assignments")
 
@@ -15,8 +15,8 @@ app = typer.Typer(help="Manage assignments")
 def list():
     a = get_adapter()
     rows = a.list_assignments()
-    print_table("Assignments", ["Member","Initiative","WeekStart","Source","Applied"], [
-        [x.member_name, x.initiative_name, x.week_start, getattr(x.source, "value", str(x.source)), "Y" if x.applied else "N"] for x in rows
+    print_table("Assignments", ["Member","Initiative","WeekStart","WeekEnd"], [
+        [x.member_name, x.initiative_name, x.week_start, x.week_end or ""] for x in rows
     ])
 
 @app.command()
@@ -50,8 +50,8 @@ def plan(dfrom: str, dto: str, algorithm: str = "greedy", recreate: bool = typer
                 "member": x.member_name,
                 "initiative": x.initiative_name,
                 "week_start": x.week_start,
-                "capacity_pw": None,  # derived on apply if needed
-                "reason": getattr(x.source, "value", str(x.source)),
+                "capacity_pw": None,
+                "reason": "PlannerGreedy",
             } for x in pr.assignments
         ],
         "unstaffed": pr.unstaffed,
@@ -70,11 +70,9 @@ def apply(plan: str, dryrun: bool = typer.Option(False, "--dryrun")):
             member_name=x["member"],
             initiative_name=x["initiative"],
             week_start=x["week_start"],
-            source=AssignmentSource.PlannerGreedy if doc.get("algorithm")=="greedy" else AssignmentSource.PlannerILP,
-            applied=not dryrun,
         ))
     if dryrun:
         typer.echo(f"Would create {len(assigned)} assignments.")
         return
     a.upsert_assignments(assigned)
-    typer.echo(f"Applied {len(assigned)} assignments.")
+    typer.echo(f"Created {len(assigned)} assignments.")

@@ -3,7 +3,7 @@ import typer
 from datetime import date
 from tmiplus.core.util.dates import parse_date
 from tmiplus.core.services.reports import budget_distribution
-from tmiplus.tli.__main__ import get_adapter
+from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Reports")

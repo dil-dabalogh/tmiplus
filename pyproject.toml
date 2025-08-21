@@ -39,3 +39,8 @@ dev = [
 
 [project.scripts]
 tmi = "tmiplus.tli.__main__:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tmiplus*"]
+exclude = ["tests*", "templates*"]

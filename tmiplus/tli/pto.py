@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typer
 from tmiplus.core.services.csv_io import read_pto_csv, write_pto_csv
-from tmiplus.tli.__main__ import get_adapter
+from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
 
 app = typer.Typer(help="Manage PTO")

@@ -7,10 +7,11 @@ with Airtable as the initial data layer and a memory adapter for tests/demos.
 
 ```bash
 # 1) Install (dev):
-pipx install .[dev]
+# zsh requires quoting extras to avoid bracket globbing
+pipx install ".[dev]"
 
 # or standard pip + venv:
-pip install -e .[dev]
+pip install -e ".[dev]"
 
 # 2) Check CLI:
 tmi --help
@@ -45,8 +46,8 @@ Create a base named **TMI Resource Planner** with **four tables**:
 - OwnerPools (Multi-select): Solutioning, Feature, Operability, QA
 - RequiredBy (Date; no time)
 - StartAfter (Date; no time; can be empty)
-- ROM_PW (Number; 1 decimal)
-- Granular_PW (Number; 1 decimal)
+- ROM (Number; 1 decimal)
+- Granular (Number; 1 decimal)
 - SSOT (URL)
 
 **PTO**
@@ -61,9 +62,7 @@ Create a base named **TMI Resource Planner** with **four tables**:
 - MemberName (Text; must match Members.Name)
 - InitiativeName (Text; must match Initiatives.Name)
 - WeekStart (Date; Monday of ISO week)
-- Source (Single select): Manual, PlannerGreedy, PlannerILP
-- PlannedAt (Created time)
-- Applied (Checkbox)
+- WeekEnd (Date; Sunday of ISO week)
 
 Export:
 - `TMI_AIRTABLE_API_KEY` and `TMI_AIRTABLE_BASE_ID` as env vars.

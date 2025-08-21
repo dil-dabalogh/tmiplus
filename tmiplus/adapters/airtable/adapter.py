@@ -3,7 +3,7 @@ import os
 from typing import List, Optional, Tuple
 from pyairtable import Table
 from tmiplus.adapters.base import DataAdapter
-from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType, AssignmentSource
+from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType
 
 MEMBERS = "Members"
 INITIATIVES = "Initiatives"
@@ -79,8 +79,8 @@ class AirtableAdapter(DataAdapter):
                 owner_pools=[Pool(p) for p in owner_pools if p],
                 required_by=f.get("RequiredBy"),
                 start_after=f.get("StartAfter"),
-                rom_pw=f.get("ROM_PW"),
-                granular_pw=f.get("Granular_PW"),
+                rom_pw=f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW"),
+                granular_pw=f.get("Granular") if f.get("Granular") is not None else f.get("Granular_PW"),
                 ssot=f.get("SSOT"),
             ))
         return out
@@ -97,8 +97,10 @@ class AirtableAdapter(DataAdapter):
                 "OwnerPools": [p.value for p in i.owner_pools],
                 "RequiredBy": i.required_by or None,
                 "StartAfter": i.start_after or None,
-                "ROM_PW": i.rom_pw,
-                "Granular_PW": i.granular_pw,
+                # Prefer new column name 'ROM'; fall back to legacy 'ROM_PW' for compatibility
+                "ROM": i.rom_pw,
+                # Prefer new column name 'Granular'; fall back to legacy 'Granular_PW' for compatibility
+                "Granular": i.granular_pw,
                 "SSOT": i.ssot or None,
             }
             if matches:
@@ -122,6 +124,7 @@ class AirtableAdapter(DataAdapter):
                 member_name=f.get("MemberName",""),
                 type=PTOType(f.get("Type")),
                 week_start=f.get("WeekStart",""),
+                week_end=f.get("WeekEnd"),
                 week_end=f.get("WeekEnd"),
                 comment=f.get("Comment"),
             ))
@@ -154,13 +157,10 @@ class AirtableAdapter(DataAdapter):
         out: List[Assignment] = []
         for r in rows:
             f = r.get("fields", {})
-            src = f.get("Source") or "Manual"
             out.append(Assignment(
                 member_name=f.get("MemberName",""),
                 initiative_name=f.get("InitiativeName",""),
                 week_start=f.get("WeekStart",""),
-                source=src,  # Pydantic coerces to enum
-                applied=bool(f.get("Applied", False)),
             ))
         return out
 
@@ -171,8 +171,7 @@ class AirtableAdapter(DataAdapter):
                 "MemberName": a.member_name,
                 "InitiativeName": a.initiative_name,
                 "WeekStart": a.week_start,
-                "Source": a.source.value if hasattr(a.source, "value") else str(a.source),
-                "Applied": a.applied,
+                "WeekEnd": a.week_end or None,
             }
             if matches:
                 self.t_assigns.update(matches[0]["id"], fields)
@@ -221,7 +220,7 @@ class AirtableAdapter(DataAdapter):
             owner_pools=[Pool(p) for p in owner_pools if p],
             required_by=f.get("RequiredBy"),
             start_after=f.get("StartAfter"),
-            rom_pw=f.get("ROM_PW"),
-            granular_pw=f.get("Granular_PW"),
+            rom_pw=f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW"),
+            granular_pw=f.get("Granular") if f.get("Granular") is not None else f.get("Granular_PW"),
             ssot=f.get("SSOT"),
         )

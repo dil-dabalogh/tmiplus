@@ -79,15 +79,8 @@ class PTORecord(BaseModel):
     comment: Optional[str] = None
 
 
-class AssignmentSource(str, Enum):
-    Manual = "Manual"
-    PlannerGreedy = "PlannerGreedy"
-    PlannerILP = "PlannerILP"
-
-
 class Assignment(BaseModel):
     member_name: str
     initiative_name: str
     week_start: str  # YYYY-MM-DD (Monday of ISO week)
-    source: AssignmentSource = AssignmentSource.Manual
-    applied: bool = False
+    week_end: Optional[str] = None  # YYYY-MM-DD (Sunday of ISO week)

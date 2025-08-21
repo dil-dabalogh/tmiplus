@@ -1,7 +1,8 @@
 from __future__ import annotations
 import csv
 from typing import List
-from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType, AssignmentSource
+from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType
+from tmiplus.core.util.dates import week_end_from_start_str
 
 def read_members_csv(path: str) -> List[Member]:
     out: List[Member] = []
@@ -38,8 +39,16 @@ def read_initiatives_csv(path: str) -> List[Initiative]:
                 owner_pools=[Pool(p) for p in owner_pools],
                 required_by=(row.get("RequiredBy") or "").strip() or None,
                 start_after=(row.get("StartAfter") or "").strip() or None,
-                rom_pw=float(row["ROM_PW"]) if row.get("ROM_PW") else None,
-                granular_pw=float(row["Granular_PW"]) if row.get("Granular_PW") else None,
+                rom_pw=(
+                    float(row.get("ROM") or row.get("ROM_PW"))
+                    if (row.get("ROM") or row.get("ROM_PW"))
+                    else None
+                ),
+                granular_pw=(
+                    float(row.get("Granular") or row.get("Granular_PW"))
+                    if (row.get("Granular") or row.get("Granular_PW"))
+                    else None
+                ),
                 ssot=(row.get("SSOT") or "").strip() or None,
             ))
     return out
@@ -47,7 +56,7 @@ def read_initiatives_csv(path: str) -> List[Initiative]:
 def write_initiatives_csv(path: str, rows: List[Initiative]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["Name","Phase","State","Priority","Budget","OwnerPools","RequiredBy","StartAfter","ROM_PW","Granular_PW","SSOT"])
+        w.writerow(["Name","Phase","State","Priority","Budget","OwnerPools","RequiredBy","StartAfter","ROM","Granular","SSOT"])
         for i in rows:
             pools = ";".join([p.value for p in i.owner_pools])
             w.writerow([i.name, i.phase.value, i.state.value, i.priority, i.budget.value, pools, i.required_by or "", i.start_after or "", i.rom_pw if i.rom_pw is not None else "", i.granular_pw if i.granular_pw is not None else "", i.ssot or ""])
@@ -76,18 +85,19 @@ def read_assignments_csv(path: str) -> List[Assignment]:
     out: List[Assignment] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
+            ws = row["WeekStart"].strip()
+            we = (row.get("WeekEnd") or "").strip() or None
             out.append(Assignment(
                 member_name=row["MemberName"].strip(),
                 initiative_name=row["InitiativeName"].strip(),
-                week_start=row["WeekStart"].strip(),
-                source=AssignmentSource(row.get("Source","Manual").strip() or "Manual"),
+                week_start=ws,
+                week_end=we or week_end_from_start_str(ws),
             ))
     return out
 
 def write_assignments_csv(path: str, rows: List[Assignment]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["MemberName","InitiativeName","WeekStart","Source"])
+        w.writerow(["MemberName","InitiativeName","WeekStart","WeekEnd"])
         for a in rows:
-            src = a.source.value if hasattr(a.source, "value") else str(a.source)
-            w.writerow([a.member_name, a.initiative_name, a.week_start, src])
+            w.writerow([a.member_name, a.initiative_name, a.week_start, a.week_end or week_end_from_start_str(a.week_start)])

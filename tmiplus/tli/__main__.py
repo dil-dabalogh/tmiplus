@@ -1,8 +1,7 @@
 from __future__ import annotations
-import typer, os
+import typer
 from rich.console import Console
-from tmiplus.adapters.memory.adapter import MemoryAdapter
-from tmiplus.adapters.airtable.adapter import AirtableAdapter
+import typer
 
 app = typer.Typer(add_completion=False)
 console = Console()
@@ -22,20 +21,25 @@ app.add_typer(assignments_app, name="assignments")
 app.add_typer(reports_app, name="reports")
 app.add_typer(config_app, name="config")
 
-def _get_adapter():
-    # If Airtable env vars exist, use Airtable; else Memory
-    if os.getenv("TMI_AIRTABLE_API_KEY") and os.getenv("TMI_AIRTABLE_BASE_ID"):
-        return AirtableAdapter()
-    return MemoryAdapter()
+def _version_callback(value: bool):
+    if value:
+        console.print("tmiplus 0.1.0")
+        raise typer.Exit()
 
 @app.callback()
-def main():
+def main(
+    version: bool = typer.Option(  # type: ignore[assignment]
+        False,
+        "--version",
+        "-v",
+        help="Show version and exit.",
+        is_eager=True,
+        callback=_version_callback,
+    )
+):
     """TMI Resource Planning CLI"""
 
 @app.command()
 def version():
     """Show version."""
     console.print("tmiplus 0.1.0")
-
-def get_adapter():
-    return _get_adapter()
