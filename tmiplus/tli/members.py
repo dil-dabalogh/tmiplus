@@ -16,7 +16,7 @@ def list():
         [m.name, m.pool.value, m.contracted_hours, m.squad_label or "", "Y" if m.active else "N"] for m in rows
     ])
 
-@app.command()
+@app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
     a = get_adapter()
     members = read_members_csv(path)

@@ -14,7 +14,7 @@ def list():
         [i.name, i.phase.value, i.state.value, i.priority, i.budget.value, ",".join([p.value for p in i.owner_pools])] for i in rows
     ])
 
-@app.command()
+@app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
     a = get_adapter()
     items = read_initiatives_csv(path)

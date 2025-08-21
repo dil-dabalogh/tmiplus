@@ -14,7 +14,7 @@ def list():
         [p.member_name, p.type.value, p.week_start, p.week_end or ""] for p in rows
     ])
 
-@app.command()
+@app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
     a = get_adapter()
     items = read_pto_csv(path)

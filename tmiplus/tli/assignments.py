@@ -19,7 +19,7 @@ def list():
         [x.member_name, x.initiative_name, x.week_start, x.week_end or ""] for x in rows
     ])
 
-@app.command()
+@app.command(name="import")
 def import_(path: str = typer.Option(..., "--path")):
     a = get_adapter()
     items = read_assignments_csv(path)
