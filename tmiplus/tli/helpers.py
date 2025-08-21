@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import Iterable
-from rich.table import Table
+
+from collections.abc import Iterable
+
 from rich.console import Console
+from rich.table import Table
 
 console = Console()
 

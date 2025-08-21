@@ -1,7 +1,11 @@
 from __future__ import annotations
-import json, yaml
-from typing import Any
+
+import json
 from pathlib import Path
+from typing import Any
+
+import yaml
+
 
 def save_yaml(data: Any, path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -9,7 +13,7 @@ def save_yaml(data: Any, path: str) -> None:
         yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
 
 def load_yaml(path: str) -> Any:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 def save_json(data: Any, path: str) -> None:

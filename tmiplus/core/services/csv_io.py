@@ -1,11 +1,23 @@
 from __future__ import annotations
+
 import csv
-from typing import List
-from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType
+
+from tmiplus.core.models import (
+    Assignment,
+    BudgetCategory,
+    Initiative,
+    Member,
+    Phase,
+    Pool,
+    PTORecord,
+    PTOType,
+    State,
+)
 from tmiplus.core.util.dates import week_end_from_start_str
 
-def read_members_csv(path: str) -> List[Member]:
-    out: List[Member] = []
+
+def read_members_csv(path: str) -> list[Member]:
+    out: list[Member] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             out.append(Member(
@@ -18,15 +30,15 @@ def read_members_csv(path: str) -> List[Member]:
             ))
     return out
 
-def write_members_csv(path: str, rows: List[Member]) -> None:
+def write_members_csv(path: str, rows: list[Member]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Name","Pool","ContractedHours","SquadLabel","Active","Notes"])
         for m in rows:
             w.writerow([m.name, m.pool.value, m.contracted_hours, m.squad_label or "", "TRUE" if m.active else "FALSE", m.notes or ""])
 
-def read_initiatives_csv(path: str) -> List[Initiative]:
-    out: List[Initiative] = []
+def read_initiatives_csv(path: str) -> list[Initiative]:
+    out: list[Initiative] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             owner_pools = [p.strip() for p in (row.get("OwnerPools","") or "").split(";") if p.strip()]
@@ -53,7 +65,7 @@ def read_initiatives_csv(path: str) -> List[Initiative]:
             ))
     return out
 
-def write_initiatives_csv(path: str, rows: List[Initiative]) -> None:
+def write_initiatives_csv(path: str, rows: list[Initiative]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["Name","Phase","State","Priority","Budget","OwnerPools","RequiredBy","StartAfter","ROM","Granular","SSOT"])
@@ -61,8 +73,8 @@ def write_initiatives_csv(path: str, rows: List[Initiative]) -> None:
             pools = ";".join([p.value for p in i.owner_pools])
             w.writerow([i.name, i.phase.value, i.state.value, i.priority, i.budget.value, pools, i.required_by or "", i.start_after or "", i.rom_pw if i.rom_pw is not None else "", i.granular_pw if i.granular_pw is not None else "", i.ssot or ""])
 
-def read_pto_csv(path: str) -> List[PTORecord]:
-    out: List[PTORecord] = []
+def read_pto_csv(path: str) -> list[PTORecord]:
+    out: list[PTORecord] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             out.append(PTORecord(
@@ -74,15 +86,15 @@ def read_pto_csv(path: str) -> List[PTORecord]:
             ))
     return out
 
-def write_pto_csv(path: str, rows: List[PTORecord]) -> None:
+def write_pto_csv(path: str, rows: list[PTORecord]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["MemberName","Type","WeekStart","WeekEnd","Comment"])
         for p in rows:
             w.writerow([p.member_name, p.type.value, p.week_start, p.week_end or "", p.comment or ""])
 
-def read_assignments_csv(path: str) -> List[Assignment]:
-    out: List[Assignment] = []
+def read_assignments_csv(path: str) -> list[Assignment]:
+    out: list[Assignment] = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             ws = row["WeekStart"].strip()
@@ -95,7 +107,7 @@ def read_assignments_csv(path: str) -> List[Assignment]:
             ))
     return out
 
-def write_assignments_csv(path: str, rows: List[Assignment]) -> None:
+def write_assignments_csv(path: str, rows: list[Assignment]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["MemberName","InitiativeName","WeekStart","WeekEnd"])

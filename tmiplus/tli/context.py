@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import os
-from tmiplus.adapters.memory.adapter import MemoryAdapter
+
 from tmiplus.adapters.airtable.adapter import AirtableAdapter
+from tmiplus.adapters.memory.adapter import MemoryAdapter
+
 
 def get_adapter():
     """Return the active data adapter based on environment.

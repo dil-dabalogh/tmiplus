@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from datetime import date, timedelta
+
 import dateparser
+
 
 def parse_date(s: str) -> date:
     d = dateparser.parse(s)

@@ -1,7 +1,9 @@
 from __future__ import annotations
-import os, yaml
+
 from pathlib import Path
-from typing import Any
+
+import yaml
+
 from tmiplus.config.schema import RootConfig
 
 CONFIG_PATH = Path.home() / ".tmi.yml"
@@ -12,7 +14,7 @@ def ensure_config() -> RootConfig:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             yaml.safe_dump(cfg.model_dump(), f, sort_keys=False, allow_unicode=True)
         return cfg
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    with open(CONFIG_PATH, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return RootConfig.model_validate(data)
 

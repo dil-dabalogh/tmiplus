@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Set
 from datetime import date
+
 from tmiplus.adapters.base import DataAdapter
-from tmiplus.core.models import Assignment, Initiative, Member, State
-from tmiplus.core.util.dates import iter_weeks, date_to_str, week_end_from_start_str
+from tmiplus.core.models import Assignment, Initiative, Member
 from tmiplus.core.services.validation import allowed_pool_members, is_done
+from tmiplus.core.util.dates import date_to_str, iter_weeks, week_end_from_start_str
+
 
 @dataclass
 class PlanResult:
-    assignments: List[Assignment]
-    unstaffed: List[Dict[str, object]]
-    summary: Dict[str, object]
+    assignments: list[Assignment]
+    unstaffed: list[dict[str, object]]
+    summary: dict[str, object]
 
 def _effective_estimate_pw(init: Initiative) -> float | None:
     if init.granular_pw is not None:
@@ -20,11 +22,11 @@ def _effective_estimate_pw(init: Initiative) -> float | None:
         return float(init.rom_pw)
     return None
 
-def _rank_key(init: Initiative) -> Tuple[int, str, str]:
+def _rank_key(init: Initiative) -> tuple[int, str, str]:
     return (init.priority, init.required_by or "9999-12-31", init.start_after or "0001-01-01")
 
-def _squad_groups(members: List[Member]) -> Dict[str, List[Member]]:
-    groups: Dict[str, List[Member]] = {}
+def _squad_groups(members: list[Member]) -> dict[str, list[Member]]:
+    groups: dict[str, list[Member]] = {}
     for m in members:
         label = m.squad_label or f"__solo__/{m.name}"
         groups.setdefault(label, []).append(m)
@@ -39,7 +41,7 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
     initiatives = [i for i in adapter.list_initiatives() if not is_done(i)]
     assignments_existing = adapter.list_assignments()
 
-    goal_map: Dict[str, float] = {}
+    goal_map: dict[str, float] = {}
     for i in initiatives:
         est = _effective_estimate_pw(i)
         if est is None:
@@ -47,13 +49,13 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
         goal_map[i.name] = est
 
     # When NOT recreate, count existing assignments toward goals (only not-Done initiatives)
-    taken_by_init_week: Dict[Tuple[str, str], float] = {}
+    taken_by_init_week: dict[tuple[str, str], float] = {}
     if not recreate:
         for a in assignments_existing:
             if a.initiative_name in goal_map:
                 taken_by_init_week[(a.initiative_name, a.week_start)] = taken_by_init_week.get((a.initiative_name, a.week_start), 0.0) + 0.0  # placeholder not used
         # We'll sum taken per initiative below
-    taken_by_init_total: Dict[str, float] = {k: 0.0 for k in goal_map}
+    taken_by_init_total: dict[str, float] = dict.fromkeys(goal_map, 0.0)
     if not recreate:
         for a in assignments_existing:
             if a.initiative_name in goal_map:
@@ -69,8 +71,8 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
     busy = {(a.member_name, a.week_start) for a in assignments_existing} if not recreate else set()
 
     # Plan result
-    plan_assignments: List[Assignment] = []
-    unstaffed: List[Dict[str, object]] = []
+    plan_assignments: list[Assignment] = []
+    unstaffed: list[dict[str, object]] = []
 
     # Rank initiatives
     plan_inits = sorted([i for i in initiatives if _effective_estimate_pw(i) is not None], key=_rank_key)
@@ -96,7 +98,7 @@ def plan_greedy(adapter: DataAdapter, dfrom: date, dto: date, recreate: bool) ->
             allowed = allowed_pool_members(adapter, init)
 
             # Build available squads: all members in the squad must be available
-            for squad_label, squad_members in groups.items():
+            for _squad_label, squad_members in groups.items():
                 names = [m.name for m in squad_members]
                 if not set(names).issubset(allowed):
                     continue

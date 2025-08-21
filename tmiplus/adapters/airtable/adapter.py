@@ -1,9 +1,21 @@
 from __future__ import annotations
+
 import os
-from typing import List, Optional, Tuple
+
 from pyairtable import Table
+
 from tmiplus.adapters.base import DataAdapter
-from tmiplus.core.models import Member, Initiative, PTORecord, Assignment, Pool, Phase, State, BudgetCategory, PTOType
+from tmiplus.core.models import (
+    Assignment,
+    BudgetCategory,
+    Initiative,
+    Member,
+    Phase,
+    Pool,
+    PTORecord,
+    PTOType,
+    State,
+)
 
 MEMBERS = "Members"
 INITIATIVES = "Initiatives"
@@ -24,9 +36,9 @@ class AirtableAdapter(DataAdapter):
         self.t_assigns = Table(api_key, base_id, ASSIGNMENTS)
 
     # --------- Members
-    def list_members(self) -> List[Member]:
+    def list_members(self) -> list[Member]:
         rows = self.t_members.all()
-        out: List[Member] = []
+        out: list[Member] = []
         for r in rows:
             f = r.get("fields", {})
             out.append(Member(
@@ -39,7 +51,7 @@ class AirtableAdapter(DataAdapter):
             ))
         return out
 
-    def upsert_members(self, members: List[Member]) -> None:
+    def upsert_members(self, members: list[Member]) -> None:
         for m in members:
             matches = self.t_members.all(formula=f"{{Name}}='{m.name}'")
             fields = {
@@ -55,16 +67,16 @@ class AirtableAdapter(DataAdapter):
             else:
                 self.t_members.create(fields)
 
-    def delete_members(self, names: List[str]) -> None:
+    def delete_members(self, names: list[str]) -> None:
         for n in names:
             matches = self.t_members.all(formula=f"{{Name}}='{n}'")
             for r in matches:
                 self.t_members.delete(r["id"])
 
     # --------- Initiatives
-    def list_initiatives(self) -> List[Initiative]:
+    def list_initiatives(self) -> list[Initiative]:
         rows = self.t_inits.all()
-        out: List[Initiative] = []
+        out: list[Initiative] = []
         for r in rows:
             f = r.get("fields", {})
             owner_pools = f.get("OwnerPools", [])
@@ -85,7 +97,7 @@ class AirtableAdapter(DataAdapter):
             ))
         return out
 
-    def upsert_initiatives(self, initiatives: List[Initiative]) -> None:
+    def upsert_initiatives(self, initiatives: list[Initiative]) -> None:
         for i in initiatives:
             matches = self.t_inits.all(formula=f"{{Name}}='{i.name}'")
             fields = {
@@ -108,16 +120,16 @@ class AirtableAdapter(DataAdapter):
             else:
                 self.t_inits.create(fields)
 
-    def delete_initiatives(self, names: List[str]) -> None:
+    def delete_initiatives(self, names: list[str]) -> None:
         for n in names:
             matches = self.t_inits.all(formula=f"{{Name}}='{n}'")
             for r in matches:
                 self.t_inits.delete(r["id"])
 
     # --------- PTO
-    def list_pto(self) -> List[PTORecord]:
+    def list_pto(self) -> list[PTORecord]:
         rows = self.t_pto.all()
-        out: List[PTORecord] = []
+        out: list[PTORecord] = []
         for r in rows:
             f = r.get("fields", {})
             out.append(PTORecord(
@@ -129,7 +141,7 @@ class AirtableAdapter(DataAdapter):
             ))
         return out
 
-    def upsert_pto(self, pto: List[PTORecord]) -> None:
+    def upsert_pto(self, pto: list[PTORecord]) -> None:
         for p in pto:
             matches = self.t_pto.all(formula=f"AND({{MemberName}}='{p.member_name}', {{WeekStart}}='{p.week_start}')")
             fields = {
@@ -144,16 +156,16 @@ class AirtableAdapter(DataAdapter):
             else:
                 self.t_pto.create(fields)
 
-    def delete_pto(self, keys: List[Tuple[str, str]]) -> None:
+    def delete_pto(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
             matches = self.t_pto.all(formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')")
             for r in matches:
                 self.t_pto.delete(r["id"])
 
     # --------- Assignments
-    def list_assignments(self) -> List[Assignment]:
+    def list_assignments(self) -> list[Assignment]:
         rows = self.t_assigns.all()
-        out: List[Assignment] = []
+        out: list[Assignment] = []
         for r in rows:
             f = r.get("fields", {})
             out.append(Assignment(
@@ -164,7 +176,7 @@ class AirtableAdapter(DataAdapter):
             ))
         return out
 
-    def upsert_assignments(self, assignments: List[Assignment]) -> None:
+    def upsert_assignments(self, assignments: list[Assignment]) -> None:
         for a in assignments:
             matches = self.t_assigns.all(formula=f"AND({{MemberName}}='{a.member_name}', {{WeekStart}}='{a.week_start}')")
             fields = {
@@ -178,14 +190,14 @@ class AirtableAdapter(DataAdapter):
             else:
                 self.t_assigns.create(fields)
 
-    def delete_assignments(self, keys: List[Tuple[str, str]]) -> None:
+    def delete_assignments(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
             matches = self.t_assigns.all(formula=f"AND({{MemberName}}='{member_name}', {{WeekStart}}='{week_start}')")
             for r in matches:
                 self.t_assigns.delete(r["id"])
 
     # --------- Lookups
-    def member_by_name(self, name: str) -> Optional[Member]:
+    def member_by_name(self, name: str) -> Member | None:
         matches = self.t_members.all(formula=f"{{Name}}='{name}'")
         if not matches:
             return None
@@ -203,7 +215,7 @@ class AirtableAdapter(DataAdapter):
             notes=f.get("Notes"),
         )
 
-    def initiative_by_name(self, name: str) -> Optional[Initiative]:
+    def initiative_by_name(self, name: str) -> Initiative | None:
         matches = self.t_inits.all(formula=f"{{Name}}='{name}'")
         if not matches:
             return None

@@ -1,13 +1,14 @@
 from __future__ import annotations
-import typer, yaml
-from datetime import date
+
+import typer
+
+from tmiplus.core.models import Assignment
 from tmiplus.core.services.csv_io import read_assignments_csv, write_assignments_csv
 from tmiplus.core.services.planner_greedy import plan_greedy
 from tmiplus.core.util.dates import parse_date
-from tmiplus.core.util.io import save_yaml, save_json, load_yaml
+from tmiplus.core.util.io import load_yaml, save_json, save_yaml
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
-from tmiplus.core.models import Assignment
 
 app = typer.Typer(help="Manage assignments")
 

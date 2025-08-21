@@ -1,11 +1,13 @@
 from __future__ import annotations
-import os
-import typer
-from typing import Dict, List, Tuple
+
 import json
-from urllib import request, error
+import os
+from urllib import error, request
+
+import typer
 from rich.console import Console
 from rich.table import Table
+
 from tmiplus.tli.context import get_adapter
 
 try:
@@ -18,7 +20,7 @@ app = typer.Typer(help="Health checks for environment, connectivity, and schema"
 console = Console()
 
 
-def _required_schema() -> Dict[str, List[str]]:
+def _required_schema() -> dict[str, list[str]]:
     return {
         "Members": ["Name", "Pool", "ContractedHours", "SquadLabel", "Active", "Notes"],
         "Initiatives": [
@@ -39,8 +41,8 @@ def _required_schema() -> Dict[str, List[str]]:
     }
 
 
-def _check_env() -> Tuple[bool, List[Tuple[str, str]]]:
-    rows: List[Tuple[str, str]] = []
+def _check_env() -> tuple[bool, list[tuple[str, str]]]:
+    rows: list[tuple[str, str]] = []
     ok = True
     for key in ["TMI_AIRTABLE_API_KEY", "TMI_AIRTABLE_BASE_ID"]:
         val = os.getenv(key)
@@ -55,8 +57,8 @@ def _check_env() -> Tuple[bool, List[Tuple[str, str]]]:
     return ok, rows
 
 
-def _check_airtable_connectivity(a: AirtableAdapter) -> Tuple[bool, List[Tuple[str, str]]]:  # type: ignore[name-defined]
-    results: List[Tuple[str, str]] = []
+def _check_airtable_connectivity(a: AirtableAdapter) -> tuple[bool, list[tuple[str, str]]]:  # type: ignore[name-defined]
+    results: list[tuple[str, str]] = []
     ok = True
     for name, table in [
         ("Members", a.t_members),
@@ -73,7 +75,7 @@ def _check_airtable_connectivity(a: AirtableAdapter) -> Tuple[bool, List[Tuple[s
     return ok, results
 
 
-def _fetch_airtable_schema_via_meta() -> Dict[str, List[str]]:
+def _fetch_airtable_schema_via_meta() -> dict[str, list[str]]:
     """Fetch Airtable base schema using the Metadata API.
 
     Requires TMI_AIRTABLE_API_KEY and TMI_AIRTABLE_BASE_ID to be set.
@@ -91,7 +93,7 @@ def _fetch_airtable_schema_via_meta() -> Dict[str, List[str]]:
     try:
         with request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            out: Dict[str, List[str]] = {}
+            out: dict[str, list[str]] = {}
             for t in data.get("tables", []):
                 t_name = t.get("name")
                 fields = [f.get("name") for f in t.get("fields", []) if f.get("name")]
@@ -106,9 +108,9 @@ def _fetch_airtable_schema_via_meta() -> Dict[str, List[str]]:
         return {}
 
 
-def _check_airtable_schema(a: AirtableAdapter) -> Tuple[bool, List[Tuple[str, str]]]:  # type: ignore[name-defined]
+def _check_airtable_schema(a: AirtableAdapter) -> tuple[bool, list[tuple[str, str]]]:  # type: ignore[name-defined]
     req = _required_schema()
-    results: List[Tuple[str, str]] = []
+    results: list[tuple[str, str]] = []
     ok = True
 
     # Prefer Metadata API to inspect field definitions (works even when tables are empty)

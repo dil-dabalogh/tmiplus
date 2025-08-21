@@ -1,12 +1,13 @@
 from __future__ import annotations
-from collections import defaultdict
-from typing import Dict, Tuple
-from datetime import date
-from tmiplus.adapters.base import DataAdapter
-from tmiplus.core.models import BudgetCategory
-from tmiplus.core.util.dates import iter_weeks, date_to_str
 
-def budget_distribution(adapter: DataAdapter, dfrom: date, dto: date) -> Dict[str, float]:
+from collections import defaultdict
+from datetime import date
+
+from tmiplus.adapters.base import DataAdapter
+from tmiplus.core.util.dates import date_to_str, iter_weeks
+
+
+def budget_distribution(adapter: DataAdapter, dfrom: date, dto: date) -> dict[str, float]:
     # Person-weeks per budget category over the window; include Unassigned/Idle
     members = adapter.list_members()
     inits = {i.name: i for i in adapter.list_initiatives()}
@@ -14,7 +15,9 @@ def budget_distribution(adapter: DataAdapter, dfrom: date, dto: date) -> Dict[st
     assigns = adapter.list_assignments()
 
     # Build assignment map by (member, week_start) -> initiative_name
-    A: Dict[Tuple[str, str], str] = {(a.member_name, a.week_start): a.initiative_name for a in assigns}
+    assignment_by_week: dict[tuple[str, str], str] = {
+        (a.member_name, a.week_start): a.initiative_name for a in assigns
+    }
 
     totals = defaultdict(float)
     for wk in iter_weeks(dfrom, dto):
@@ -28,8 +31,8 @@ def budget_distribution(adapter: DataAdapter, dfrom: date, dto: date) -> Dict[st
             if (m.name, wk_s) in pto:
                 # PTO blocks entire week (treated as not available)
                 continue
-            if (m.name, wk_s) in A:
-                init_name = A[(m.name, wk_s)]
+            if (m.name, wk_s) in assignment_by_week:
+                init_name = assignment_by_week[(m.name, wk_s)]
                 if init_name in inits:
                     cat = inits[init_name].budget.value
                     assigned_capacity[cat] += cap

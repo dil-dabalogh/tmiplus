@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typer
-from typing import Optional
+
+from tmiplus.core.models import Pool
 from tmiplus.core.services.csv_io import read_members_csv, write_members_csv
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
-from tmiplus.core.models import Member, Pool
 
 app = typer.Typer(help="Manage members")
 

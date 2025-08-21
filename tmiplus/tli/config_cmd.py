@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typer
+
 from tmiplus.config.loader import ensure_config, save_config
 
 app = typer.Typer(help="Config management")

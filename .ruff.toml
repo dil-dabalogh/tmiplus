@@ -1,5 +1,7 @@
 line-length = 100
 target-version = "py311"
+
+[lint]
 extend-select = ["B", "C4", "I", "N", "UP"]
 ignore = ["E501"]
 

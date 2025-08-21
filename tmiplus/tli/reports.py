@@ -1,8 +1,11 @@
 from __future__ import annotations
-import typer
+
 from datetime import date
-from tmiplus.core.util.dates import parse_date
+
+import typer
+
 from tmiplus.core.services.reports import budget_distribution
+from tmiplus.core.util.dates import parse_date
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
 

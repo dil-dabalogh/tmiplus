@@ -1,5 +1,6 @@
 import nox
 
+
 @nox.session
 def lint(session):
     session.install("ruff", "black")

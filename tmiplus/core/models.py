@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -35,9 +35,9 @@ class Member(BaseModel):
     name: str = Field(..., min_length=1)
     pool: Pool
     contracted_hours: int = Field(default=40, ge=1, le=168)
-    squad_label: Optional[str] = None
+    squad_label: str | None = None
     active: bool = True
-    notes: Optional[str] = None
+    notes: str | None = None
 
     @property
     def weekly_capacity_pw(self) -> float:
@@ -50,12 +50,12 @@ class Initiative(BaseModel):
     state: State
     priority: int = Field(..., ge=1, le=5)
     budget: BudgetCategory
-    owner_pools: List[Pool] = Field(default_factory=list)
-    required_by: Optional[str] = None  # YYYY-MM-DD
-    start_after: Optional[str] = None  # YYYY-MM-DD
-    rom_pw: Optional[float] = Field(default=None, ge=0)
-    granular_pw: Optional[float] = Field(default=None, ge=0)
-    ssot: Optional[str] = None
+    owner_pools: list[Pool] = Field(default_factory=list)
+    required_by: str | None = None  # YYYY-MM-DD
+    start_after: str | None = None  # YYYY-MM-DD
+    rom_pw: float | None = Field(default=None, ge=0)
+    granular_pw: float | None = Field(default=None, ge=0)
+    ssot: str | None = None
 
     @field_validator("owner_pools", mode="before")
     @classmethod
@@ -75,12 +75,12 @@ class PTORecord(BaseModel):
     member_name: str
     type: PTOType
     week_start: str  # YYYY-MM-DD (Monday)
-    week_end: Optional[str] = None  # YYYY-MM-DD (Sunday)
-    comment: Optional[str] = None
+    week_end: str | None = None  # YYYY-MM-DD (Sunday)
+    comment: str | None = None
 
 
 class Assignment(BaseModel):
     member_name: str
     initiative_name: str
     week_start: str  # YYYY-MM-DD (Monday of ISO week)
-    week_end: Optional[str] = None  # YYYY-MM-DD (Sunday of ISO week)
+    week_end: str | None = None  # YYYY-MM-DD (Sunday of ISO week)
