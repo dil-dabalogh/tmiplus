@@ -69,6 +69,7 @@ class PTOType(str, Enum):
     Holiday = "Holiday"
     Sick = "Sick leave"
     Other = "Other"
+    PublicHoliday = "Public holiday"
 
 
 class PTORecord(BaseModel):

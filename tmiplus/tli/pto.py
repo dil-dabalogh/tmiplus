@@ -20,9 +20,7 @@ app = typer.Typer(help="Manage PTO")
 NAME_OPT = typer.Option(..., "--name", help="Member name")
 FROM_OPT = typer.Option(..., "--from", help="Start Monday (YYYY-MM-DD)")
 TO_OPT = typer.Option(..., "--to", help="End Sunday (YYYY-MM-DD)")
-PTYPE_OPT = typer.Option(
-    ..., "--type", help="PTO type (Holiday, 'Sick leave', Other, 'Public holiday' )"
-)
+PTYPE_OPT = typer.Option(..., "--type", help="PTO type")
 DRYRUN_OPT = typer.Option(False, "--dryrun", help="Show actions without writing")
 
 
