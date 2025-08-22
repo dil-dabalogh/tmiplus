@@ -271,7 +271,6 @@ class AirtableAdapter(DataAdapter):
                             m_field: [a.member_name],
                             i_field: [a.initiative_name],
                             "WeekStart": a.week_start,
-                            "WeekEnd": a.week_end or None,
                         }
                         if matches:
                             self.t_assigns.update(
@@ -292,10 +291,9 @@ class AirtableAdapter(DataAdapter):
                         if not (member_id and init_id):
                             raise
                         id_link_fields: dict[str, object] = {
-                            m_field: [{"id": member_id}],
-                            i_field: [{"id": init_id}],
+                            m_field: [member_id],
+                            i_field: [init_id],
                             "WeekStart": a.week_start,
-                            "WeekEnd": a.week_end or None,
                         }
                         if matches:
                             self.t_assigns.update(
