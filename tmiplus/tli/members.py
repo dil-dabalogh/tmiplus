@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 import typer
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 
 from tmiplus.core.models import Pool
 from tmiplus.core.services.csv_io import read_members_csv, write_members_csv
@@ -13,7 +20,14 @@ app = typer.Typer(help="Manage members")
 @app.command()
 def list() -> None:
     a = get_adapter()
-    rows = a.list_members()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching members...", total=None)
+        rows = a.list_members()
+        progress.update(task, description="Rendering table...")
     print_table(
         "Members",
         ["Name", "Pool", "Hours", "Squad", "Active"],
@@ -34,14 +48,38 @@ def list() -> None:
 def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     members = read_members_csv(path)
-    a.upsert_members(members)
-    typer.echo(f"Imported {len(members)} members.")
+    total = len(members)
+    if total == 0:
+        typer.echo("No members to import.")
+        return
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Importing members...", total=total)
+        batch_size = 50
+        for i in range(0, total, batch_size):
+            batch = members[i : i + batch_size]
+            a.upsert_members(batch)
+            progress.update(task, advance=len(batch))
+    typer.echo(f"Imported {total} members.")
 
 
 @app.command()
 def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
-    write_members_csv(out, a.list_members())
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching members...", total=None)
+        rows = a.list_members()
+        progress.update(task, description="Writing CSV...")
+        write_members_csv(out, rows)
     typer.echo(f"Wrote {out}.")
 
 

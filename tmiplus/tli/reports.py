@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 import typer
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from tmiplus.core.services.reports import (
     budget_distribution,
@@ -43,12 +44,26 @@ def budget_distribution_cmd(
         f, t = parse_date(dfrom), parse_date(dto)
     else:
         f, t = current_quarter_dates(date.today())
-    data = budget_distribution(a, f, t)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Computing budget distribution...", total=None)
+        data = budget_distribution(a, f, t)
+        progress.update(task, description="Preparing tables...")
     total = sum(data.values()) or 1.0
     rows = [[k, f"{v:.2f}", f"{(v/total*100):.1f}%"] for k, v in data.items()]
     print_table("Budget distribution (PW)", ["Category", "PW", "%"], rows)
     # Detailed per-initiative table
-    detail = initiative_details(a, f, t)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task2 = progress.add_task("Computing initiative details...", total=None)
+        detail = initiative_details(a, f, t)
+        progress.update(task2, description="Rendering tables...")
     if detail:
         rows2 = [
             [
@@ -70,7 +85,14 @@ def budget_distribution_cmd(
             rows2,
         )
     # PTO breakdown by type
-    pto = pto_breakdown(a, f, t)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task3 = progress.add_task("Computing PTO breakdown...", total=None)
+        pto = pto_breakdown(a, f, t)
+        progress.update(task3, description="Rendering tables...")
     if pto:
         rows3 = [[k, f"{v:.2f}"] for k, v in pto.items()]
         print_table("PTO by type (PW)", ["Type", "PW"], rows3)
@@ -82,7 +104,14 @@ def idle_cmd(
 ) -> None:
     a = get_adapter()
     f, t = parse_date(dfrom), parse_date(dto)
-    rows = idle_capacity(a, f, t)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Computing idle capacity...", total=None)
+        rows = idle_capacity(a, f, t)
+        progress.update(task, description="Rendering table...")
     print_table(
         "Idle capacity (PW)",
         ["Member", "Idle PW"],

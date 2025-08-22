@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 import typer
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 
 from tmiplus.core.services.csv_io import read_initiatives_csv, write_initiatives_csv
 from tmiplus.tli.context import get_adapter
@@ -12,7 +19,14 @@ app = typer.Typer(help="Manage initiatives")
 @app.command()
 def list() -> None:
     a = get_adapter()
-    rows = a.list_initiatives()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching initiatives...", total=None)
+        rows = a.list_initiatives()
+        progress.update(task, description="Rendering table...")
     print_table(
         "Initiatives",
         ["Name", "Phase", "State", "Priority", "Budget", "OwnerPools"],
@@ -34,12 +48,36 @@ def list() -> None:
 def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     items = read_initiatives_csv(path)
-    a.upsert_initiatives(items)
-    typer.echo(f"Imported {len(items)} initiatives.")
+    total = len(items)
+    if total == 0:
+        typer.echo("No initiatives to import.")
+        return
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Importing initiatives...", total=total)
+        batch_size = 50
+        for i in range(0, total, batch_size):
+            batch = items[i : i + batch_size]
+            a.upsert_initiatives(batch)
+            progress.update(task, advance=len(batch))
+    typer.echo(f"Imported {total} initiatives.")
 
 
 @app.command()
 def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
-    write_initiatives_csv(out, a.list_initiatives())
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching initiatives...", total=None)
+        rows = a.list_initiatives()
+        progress.update(task, description="Writing CSV...")
+        write_initiatives_csv(out, rows)
     typer.echo(f"Wrote {out}.")

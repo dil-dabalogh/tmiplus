@@ -30,7 +30,14 @@ app = typer.Typer(help="Manage assignments")
 @app.command()
 def list() -> None:
     a = get_adapter()
-    rows = a.list_assignments()
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching assignments...", total=None)
+        rows = a.list_assignments()
+        progress.update(task, description="Rendering table...")
     print_table(
         "Assignments",
         ["Member", "Initiative", "WeekStart", "WeekEnd", "CapacityPW"],
@@ -76,7 +83,15 @@ def import_(path: str = typer.Option(..., "--path")) -> None:
 @app.command()
 def export(out: str = typer.Option(..., "--out")) -> None:
     a = get_adapter()
-    write_assignments_csv(out, a.list_assignments())
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Fetching assignments...", total=None)
+        rows = a.list_assignments()
+        progress.update(task, description="Writing CSV...")
+        write_assignments_csv(out, rows)
     typer.echo(f"Wrote {out}.")
 
 
@@ -119,21 +134,30 @@ def plan(
                 raise typer.BadParameter("Invalid algorithm. Use 'greedy' or 'ilp'.")
             progress.update(task, description="Finalizing plan...")
     else:
-        if algorithm == "greedy":
-            pr = plan_greedy(a, parse_date(dfrom), parse_date(dto), recreate=recreate)
-        elif algorithm == "ilp":
-            try:
-                pr = plan_ilp(
-                    a,
-                    parse_date(dfrom),
-                    parse_date(dto),
-                    recreate=recreate,
-                    msg=verbose,
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+        ) as progress:
+            task = progress.add_task("Planning...", total=None)
+            if algorithm == "greedy":
+                pr = plan_greedy(
+                    a, parse_date(dfrom), parse_date(dto), recreate=recreate
                 )
-            except RuntimeError as exc:
-                raise typer.BadParameter(str(exc)) from exc
-        else:
-            raise typer.BadParameter("Invalid algorithm. Use 'greedy' or 'ilp'.")
+            elif algorithm == "ilp":
+                try:
+                    pr = plan_ilp(
+                        a,
+                        parse_date(dfrom),
+                        parse_date(dto),
+                        recreate=recreate,
+                        msg=verbose,
+                    )
+                except RuntimeError as exc:
+                    raise typer.BadParameter(str(exc)) from exc
+            else:
+                raise typer.BadParameter("Invalid algorithm. Use 'greedy' or 'ilp'.")
+            progress.update(task, description="Finalizing plan...")
     reason = "PlannerILP" if algorithm == "ilp" else "PlannerGreedy"
     plan_doc = {
         "version": 1,
