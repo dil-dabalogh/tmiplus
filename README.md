@@ -78,13 +78,39 @@ tmi members import --path ./members.csv --dryrun
 tmi initiatives export --out ./initiatives.csv
 ```
 
-### Planner (Greedy MVP)
+### Planner
 
-- Respects OwnerPools, PTO, StartAfter, one-initiative-per-member-per-week, squad all-or-none.
-- No partial completion: initiative is either fully staffed within window or reported as unstaffed.
-- `--recreate` ignores existing (not Done) assignments in window during planning.
-- Output plan to YAML/JSON; apply via `tmi assignments apply --plan plan.yml`.
-- ILP planner supports partial weekly assignments via `CapacityPW` per member-week.
+- Greedy:
+  - Respects OwnerPools, PTO, StartAfter, one-initiative-per-member-per-week, squad all-or-none.
+  - No partial completion (MVP behavior).
+  - `--recreate` ignores existing (not Done) assignments in window during planning.
+  - Output plan to YAML/JSON; apply via `tmi assignments apply --plan plan.yml`.
+
+- ILP (default-installed):
+  - Supports partial weekly assignments per member-week via `CapacityPW`.
+  - Reduces ping-pong (member switches) and compresses initiative spans using soft penalties.
+  - All ILP solver and weighting parameters are read from config at `~/.tmi.yml` under `planner.ilp`.
+  - No CLI flags for ILP tuning; edit config instead and re-run.
+
+#### ILP configuration (in `~/.tmi.yml`)
+
+```yaml
+planner:
+  ilp:
+    time_limit_s: 120           # Solver time limit (seconds)
+    mip_gap: 0.01               # Relative MIP gap target (e.g., 1% = 0.01)
+    threads: 0                  # 0 = solver default
+    weights:
+      complete_priority_weight: 1000.0   # Large weight to prioritize fully completing higher-priority initiatives
+      early_week_bonus: 0.25             # Small bonus to prefer earlier weeks
+      member_chunk_transition_penalty: 2.0   # Penalize member switching between weeks (contiguity)
+      init_span_transition_penalty: 1.0      # Penalize initiative week-to-week start/stop transitions
+      init_active_week_penalty: 0.25         # Penalize each active week to compress initiative span
+```
+
+Notes:
+- Increase penalties to reduce fragmentation; if too high, throughput/full completions may drop.
+- Decrease penalties if solver over-concentrates or misses feasible completions.
 
 ### Tooling
 
