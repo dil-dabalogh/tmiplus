@@ -28,11 +28,13 @@ def budget_distribution(
         # total capacity this week
         total_capacity = 0.0
         assigned_capacity: dict[str, float] = defaultdict(float)
+        pto_capacity = 0.0
         for m in members:
             cap = m.weekly_capacity_pw
             total_capacity += cap
             if (m.name, wk_s) in pto:
-                # PTO blocks entire week (treated as not available)
+                # PTO: attribute capacity to PTO for this week
+                pto_capacity += cap
                 continue
             if (m.name, wk_s) in assignment_by_week:
                 init_name = assignment_by_week[(m.name, wk_s)]
@@ -44,7 +46,9 @@ def budget_distribution(
             totals[cat] += cap
 
         used = sum(assigned_capacity.values())
-        idle = max(0.0, total_capacity - used)  # PTO reduces availability implicitly
+        # Attribute PTO explicitly and compute idle as what's left
+        totals["PTO"] += pto_capacity
+        idle = max(0.0, total_capacity - used - pto_capacity)
         totals["Unassigned/Idle"] += idle
 
     return dict(sorted(totals.items(), key=lambda kv: kv[0]))
@@ -109,6 +113,33 @@ def initiative_details(
             }
         )
     return rows
+
+
+def pto_breakdown(adapter: DataAdapter, dfrom: date, dto: date) -> dict[str, float]:
+    """Return total PTO allocation (person-weeks) by PTO type within the window.
+
+    - Each PTO record is considered for its week_start only (weekly granularity)
+    - A member on PTO consumes their full weekly capacity for that week
+    """
+    members = adapter.list_members()
+    member_capacity = {m.name: m.weekly_capacity_pw for m in members}
+    pto_rows = adapter.list_pto()
+
+    # Map (member, week_start) -> type string
+    pto_type_by_week: dict[tuple[str, str], str] = {}
+    for p in pto_rows:
+        pto_type_by_week[(p.member_name, p.week_start)] = p.type.value
+
+    totals: dict[str, float] = defaultdict(float)
+    for wk in iter_weeks(dfrom, dto):
+        wk_s = date_to_str(wk)
+        for m in members:
+            t = pto_type_by_week.get((m.name, wk_s))
+            if not t:
+                continue
+            totals[t] += member_capacity.get(m.name, 0.0)
+
+    return dict(sorted(totals.items(), key=lambda kv: kv[0]))
 
 
 def idle_capacity(

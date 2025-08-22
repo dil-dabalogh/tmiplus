@@ -8,6 +8,7 @@ from tmiplus.core.services.reports import (
     budget_distribution,
     idle_capacity,
     initiative_details,
+    pto_breakdown,
 )
 from tmiplus.core.util.dates import parse_date
 from tmiplus.tli.context import get_adapter
@@ -68,6 +69,11 @@ def budget_distribution_cmd(
             ["Initiative", "Budget", "Estimate PW", "Type", "Assigned PW"],
             rows2,
         )
+    # PTO breakdown by type
+    pto = pto_breakdown(a, f, t)
+    if pto:
+        rows3 = [[k, f"{v:.2f}"] for k, v in pto.items()]
+        print_table("PTO by type (PW)", ["Type", "PW"], rows3)
 
 
 @app.command("idle")
