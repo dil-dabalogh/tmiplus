@@ -52,6 +52,12 @@ class AirtableAdapter(DataAdapter):
         # Try to detect via schema (requires PAT with schema scope); ignore errors
         self._detect_assignment_link_fields_schema()
 
+        # PTO: optional configured mapping for linked field name in PTO table
+        self.pto_member_link_field = os.getenv("TMI_PTO_MEMBER_LINK_FIELD")
+        # Prefer schema detection if available; otherwise try heuristic probing
+        self._detect_pto_member_link_field()
+        self._detect_pto_member_link_field_schema()
+
     # --------- Members
     def list_members(self) -> list[Member]:
         rows = self.t_members.all()
@@ -191,10 +197,67 @@ class AirtableAdapter(DataAdapter):
                 "WeekEnd": p.week_end or None,
                 "Comment": p.comment or None,
             }
-            if matches:
-                self.t_pto.update(matches[0]["id"], fields)  # type: ignore[arg-type]
-            else:
-                self.t_pto.create(fields)  # type: ignore[arg-type]
+            try:
+                if matches:
+                    self.t_pto.update(matches[0]["id"], fields)  # type: ignore[arg-type]
+                else:
+                    self.t_pto.create(fields)  # type: ignore[arg-type]
+            except Exception as exc:
+                # Fallback for bases where MemberName is computed and a linked field must be used
+                msg = str(exc)
+                if "INVALID_VALUE_FOR_COLUMN" in msg and ("MemberName" in msg):
+                    # Determine link field via heuristic or schema
+                    self._detect_pto_member_link_field()
+                    self._detect_pto_member_link_field_schema()
+                    m_field = self.pto_member_link_field
+                    if not m_field:
+                        raise RuntimeError(
+                            "PTO upsert failed: could not determine PTO member linked field name from Airtable schema. "
+                            "Ensure your API token has meta schema access and the PTO table contains a linked field to Members."
+                        ) from exc
+
+                    # Build fields without computed MemberName
+                    common_fields: dict[str, object] = {
+                        "Type": p.type.value,
+                        "WeekStart": p.week_start,
+                        "WeekEnd": p.week_end or None,
+                        "Comment": p.comment or None,
+                    }
+                    # First try linking by member name with typecast
+                    try:
+                        name_link_fields: dict[str, object] = {
+                            **common_fields,
+                            m_field: [p.member_name],
+                        }
+                        if matches:
+                            self.t_pto.update(
+                                matches[0]["id"],
+                                cast(dict[str, Any], name_link_fields),
+                                typecast=True,
+                            )
+                        else:
+                            self.t_pto.create(
+                                cast(dict[str, Any], name_link_fields), typecast=True
+                            )
+                        continue
+                    except Exception:
+                        # Fallback to linking by record id
+                        member_id = self._member_record_id_by_name(p.member_name)
+                        if not member_id:
+                            raise
+                        id_link_fields: dict[str, object] = {
+                            **common_fields,
+                            m_field: [member_id],
+                        }
+                        if matches:
+                            self.t_pto.update(
+                                matches[0]["id"], cast(dict[str, Any], id_link_fields)
+                            )
+                        else:
+                            self.t_pto.create(cast(dict[str, Any], id_link_fields))
+                        continue
+                else:
+                    raise
 
     def delete_pto(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
@@ -462,6 +525,96 @@ class AirtableAdapter(DataAdapter):
                 self.assign_initiative_link_field = init_field
         except Exception:
             return
+
+    def _detect_pto_member_link_field_schema(self) -> None:
+        """Use Airtable meta API to determine the linked field name for PTO->Members.
+
+        Requires API token with schema scope. If unavailable, silently skip.
+        """
+        if self.pto_member_link_field:
+            return
+        try:
+            import requests as _rq  # type: ignore[import-untyped]
+
+            url = f"https://api.airtable.com/v0/meta/bases/{self._base_id}/tables"
+            headers = {"Authorization": f"Bearer {self._api_key}"}
+            resp = _rq.get(url, headers=headers, timeout=10)
+            if resp.status_code != 200:
+                return
+            data = resp.json()
+            tables = data.get("tables", [])
+            pto_tbl = next((t for t in tables if t.get("name") == PTO), None)
+            if not pto_tbl:
+                return
+            # Build tableId->name mapping
+            table_id_to_name = {t.get("id"): t.get("name") for t in tables}
+            for f in pto_tbl.get("fields", []):
+                if f.get("type") != "multipleRecordLinks":
+                    continue
+                link = f.get("options", {}).get("linkedTableId")
+                if not isinstance(link, str):
+                    continue
+                linked_name = table_id_to_name.get(link)
+                if linked_name == MEMBERS and not self.pto_member_link_field:
+                    self.pto_member_link_field = f.get("name")
+                    break
+        except Exception:
+            return
+
+    def _detect_pto_member_link_field(self) -> None:
+        """Attempt to infer the PTO table linked field name by inspecting existing records.
+
+        Heuristic: find fields whose values are lists of record ids (strings starting with 'rec') or
+        list of objects with an 'id' that looks like a record id. Then, for the first record id in
+        each such field, try fetching it from Members table to determine if it links to Members.
+        """
+        if self.pto_member_link_field:
+            return
+        try:
+            rows = self.t_pto.all(max_records=10)
+        except Exception:
+            return
+        if not rows:
+            return
+        candidate_fields: set[str] = set()
+        for r in rows:
+            f = r.get("fields", {})
+            for k, v in f.items():
+                if isinstance(v, list) and v:
+                    first = v[0]
+                    rec_id: str | None = None
+                    if isinstance(first, str) and first.startswith("rec"):
+                        rec_id = first
+                    elif (
+                        isinstance(first, dict)
+                        and isinstance(first.get("id"), str)
+                        and str(first["id"]).startswith("rec")
+                    ):
+                        rec_id = str(first["id"])
+                    if rec_id:
+                        candidate_fields.add(k)
+        for field_name in candidate_fields:
+            sample_id: str | None = None
+            for r in rows:
+                vals = r.get("fields", {}).get(field_name)
+                if isinstance(vals, list) and vals:
+                    first = vals[0]
+                    if isinstance(first, str):
+                        sample_id = first
+                    elif isinstance(first, dict):
+                        sid = first.get("id")
+                        if isinstance(sid, str):
+                            sample_id = sid
+                if sample_id:
+                    break
+            if not sample_id:
+                continue
+            try:
+                self.t_members.get(sample_id)
+                self.pto_member_link_field = field_name
+                break
+            except Exception:
+                continue
 
     def delete_assignments(self, keys: list[tuple[str, str]]) -> None:
         for member_name, week_start in keys:
