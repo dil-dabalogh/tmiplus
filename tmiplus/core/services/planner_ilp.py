@@ -125,6 +125,35 @@ def plan_ilp(
                 )
 
     # Constraints
+    # Squad all-or-none: For each (initiative, week), either the entire squad is assigned or none.
+    # Build squads by label
+    squads_by_label: dict[str, list[str]] = {}
+    for m in members:
+        if m.squad_label:
+            squads_by_label.setdefault(m.squad_label, []).append(m.name)
+
+    # For each initiative and week, enforce all-or-none per squad
+    for i in initiatives:
+        if i.name not in target_pw:
+            continue
+        for w in weeks:
+            for _label, squad_members in squads_by_label.items():
+                # Determine which members have decision vars for this (i,w)
+                vars_present = [mm for mm in squad_members if (mm, i.name, w) in x]
+                if not vars_present:
+                    continue
+                if len(vars_present) == len(squad_members):
+                    # All members eligible -> tie their x equal (all-or-none)
+                    anchor = vars_present[0]
+                    for mm in vars_present[1:]:
+                        prob += x[(mm, i.name, w)] <= x[(anchor, i.name, w)]  # type: ignore[operator]
+                        prob += x[(anchor, i.name, w)] <= x[(mm, i.name, w)]  # type: ignore[operator]
+                else:
+                    # Some squad members are ineligible this week -> forbid squad assignment
+                    for mm in vars_present:
+                        prob += x[(mm, i.name, w)] <= 0  # type: ignore[operator]
+
+    # Link capacity to assignment decisions and enforce member weekly capacity and one-initiative-per-week
     # Link capacity to assignment decisions and enforce member weekly capacity and one-initiative-per-week
     for m in members:
         for w in weeks:
