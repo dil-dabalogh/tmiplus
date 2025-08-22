@@ -17,6 +17,7 @@ from tmiplus.core.models import (
     PTOType,
     State,
 )
+from tmiplus.core.util.dates import week_end_from_start_str
 
 MEMBERS = "Members"
 INITIATIVES = "Initiatives"
@@ -229,6 +230,7 @@ class AirtableAdapter(DataAdapter):
         return out
 
     def upsert_assignments(self, assignments: list[Assignment]) -> None:
+        affected_initiatives: set[str] = set()
         for a in assignments:
             matches = self.t_assigns.all(
                 formula=f"AND({{MemberName}}='{a.member_name}', {{WeekStart}}='{a.week_start}')"
@@ -244,6 +246,7 @@ class AirtableAdapter(DataAdapter):
                     self.t_assigns.update(matches[0]["id"], fields)  # type: ignore[arg-type]
                 else:
                     self.t_assigns.create(fields)  # type: ignore[arg-type]
+                affected_initiatives.add(a.initiative_name)
             except Exception as exc:
                 # Fallback for bases where MemberName/InitiativeName are computed fields.
                 # In that case, write using linked fields instead (Member/Initiative)
@@ -280,6 +283,7 @@ class AirtableAdapter(DataAdapter):
                             self.t_assigns.create(
                                 cast(dict[str, Any], name_link_fields), typecast=True
                             )
+                        affected_initiatives.add(a.initiative_name)
                         continue
                     except Exception:
                         # Fallback to linking by record IDs
@@ -299,7 +303,53 @@ class AirtableAdapter(DataAdapter):
                             )
                         else:
                             self.t_assigns.create(cast(dict[str, Any], id_link_fields))
+                        affected_initiatives.add(a.initiative_name)
                         continue
+                else:
+                    raise
+        if affected_initiatives:
+            self._update_initiatives_engineering_window(affected_initiatives)
+
+    def _update_initiatives_engineering_window(
+        self, initiative_names: set[str]
+    ) -> None:
+        rows = self.t_assigns.all()
+
+        def _first_str(value: object) -> str:
+            if isinstance(value, str):
+                return value
+            if isinstance(value, list) and value:
+                first = value[0]
+                return str(first) if isinstance(first, str | int | float) else ""
+            return ""
+
+        for name in initiative_names:
+            starts: list[str] = []
+            ends: list[str] = []
+            for r in rows:
+                f = r.get("fields", {})
+                i_name = _first_str(f.get("InitiativeName", ""))
+                if i_name != name:
+                    continue
+                ws = f.get("WeekStart")
+                if isinstance(ws, str) and ws:
+                    starts.append(ws)
+                    we = f.get("WeekEnd")
+                    if isinstance(we, str) and we:
+                        ends.append(we)
+                    else:
+                        ends.append(week_end_from_start_str(ws))
+            if not starts or not ends:
+                continue
+            eng_start = min(starts)
+            eng_end = max(ends)
+            matches = self.t_inits.all(formula=f"{{Name}}='{name}'")
+            if not matches:
+                continue
+            self.t_inits.update(
+                matches[0]["id"],
+                {"EngineeringStart": eng_start, "EngineeringEnd": eng_end},
+            )  # type: ignore[arg-type]
 
     def _detect_assignment_link_fields(self) -> None:
         """Attempt to infer the Assignments table linked field names by inspecting existing records.
