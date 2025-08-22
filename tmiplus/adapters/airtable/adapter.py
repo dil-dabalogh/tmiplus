@@ -225,6 +225,7 @@ class AirtableAdapter(DataAdapter):
                     initiative_name=_first_str(f.get("InitiativeName", "")),
                     week_start=f.get("WeekStart", ""),
                     week_end=f.get("WeekEnd"),
+                    capacity_pw=f.get("CapacityPW"),
                 )
             )
         return out
@@ -240,6 +241,7 @@ class AirtableAdapter(DataAdapter):
                 "InitiativeName": a.initiative_name,
                 "WeekStart": a.week_start,
                 "WeekEnd": a.week_end or None,
+                "CapacityPW": a.capacity_pw if a.capacity_pw is not None else None,
             }
             try:
                 if matches:

@@ -84,6 +84,7 @@ tmi initiatives export --out ./initiatives.csv
 - No partial completion: initiative is either fully staffed within window or reported as unstaffed.
 - `--recreate` ignores existing (not Done) assignments in window during planning.
 - Output plan to YAML/JSON; apply via `tmi assignments apply --plan plan.yml`.
+- ILP planner supports partial weekly assignments via `CapacityPW` per member-week.
 
 ### Tooling
 

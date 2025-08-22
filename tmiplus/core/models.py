@@ -84,3 +84,6 @@ class Assignment(BaseModel):
     initiative_name: str
     week_start: str  # YYYY-MM-DD (Monday of ISO week)
     week_end: str | None = None  # YYYY-MM-DD (Sunday of ISO week)
+    # Amount of person-weeks allocated to this assignment in the given week.
+    # If None, treat as full weekly capacity for the member.
+    capacity_pw: float | None = Field(default=None, ge=0)

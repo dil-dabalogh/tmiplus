@@ -168,12 +168,15 @@ def read_assignments_csv(path: str) -> list[Assignment]:
         for row in csv.DictReader(f):
             ws = row["WeekStart"].strip()
             we = (row.get("WeekEnd") or "").strip() or None
+            cap_raw = (row.get("CapacityPW") or "").strip()
+            cap = float(cap_raw) if cap_raw else None
             out.append(
                 Assignment(
                     member_name=row["MemberName"].strip(),
                     initiative_name=row["InitiativeName"].strip(),
                     week_start=ws,
                     week_end=we or week_end_from_start_str(ws),
+                    capacity_pw=cap,
                 )
             )
     return out
@@ -182,7 +185,9 @@ def read_assignments_csv(path: str) -> list[Assignment]:
 def write_assignments_csv(path: str, rows: list[Assignment]) -> None:
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["MemberName", "InitiativeName", "WeekStart", "WeekEnd"])
+        w.writerow(
+            ["MemberName", "InitiativeName", "WeekStart", "WeekEnd", "CapacityPW"]
+        )
         for a in rows:
             w.writerow(
                 [
@@ -190,5 +195,6 @@ def write_assignments_csv(path: str, rows: list[Assignment]) -> None:
                     a.initiative_name,
                     a.week_start,
                     a.week_end or week_end_from_start_str(a.week_start),
+                    "" if a.capacity_pw is None else f"{a.capacity_pw}",
                 ]
             )
