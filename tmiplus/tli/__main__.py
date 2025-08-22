@@ -14,6 +14,7 @@ from tmiplus.tli.initiatives import app as initiatives_app
 from tmiplus.tli.members import app as members_app
 from tmiplus.tli.pto import app as pto_app
 from tmiplus.tli.reports import app as reports_app
+from tmiplus.tli.tui import run_tui
 
 app = typer.Typer(add_completion=False)
 console = Console()
@@ -57,3 +58,9 @@ def version() -> None:
         console.print(f"tmiplus {pkg_version('tmiplus')}")
     except PackageNotFoundError:  # pragma: no cover
         console.print("tmiplus (version unknown)")
+
+
+@app.command()
+def tui() -> None:
+    """Launch the Textual TUI."""
+    run_tui()
