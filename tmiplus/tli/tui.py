@@ -12,9 +12,8 @@ from textual.widgets import (
     Footer,
     Header,
     Input,
-    Label,
+    TabbedContent,
     TabPane,
-    Tabs,
 )
 
 from tmiplus.core.services.csv_io import (
@@ -79,12 +78,12 @@ class TmiTui(App):
             yield Button("Plan (Greedy)", id="plan_greedy")
             yield Button("Plan (ILP)", id="plan_ilp")
         with Container(id="content"):
-            with Tabs():
-                yield TabPane(Label("Members"), id="tab_members")
-                yield TabPane(Label("Initiatives"), id="tab_inits")
-                yield TabPane(Label("Assignments"), id="tab_assigns")
-                yield TabPane(Label("PTO"), id="tab_pto")
-                yield TabPane(Label("Reports"), id="tab_reports")
+            with TabbedContent():
+                yield TabPane("Members", id="tab_members")
+                yield TabPane("Initiatives", id="tab_inits")
+                yield TabPane("Assignments", id="tab_assigns")
+                yield TabPane("PTO", id="tab_pto")
+                yield TabPane("Reports", id="tab_reports")
         yield Footer()
 
     def on_mount(self) -> None:
