@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 from rich.table import Table
 
 from tmiplus.core.models import Assignment
@@ -45,8 +51,26 @@ def list() -> None:
 def import_(path: str = typer.Option(..., "--path")) -> None:
     a = get_adapter()
     items = read_assignments_csv(path)
-    a.upsert_assignments(items)
-    typer.echo(f"Imported {len(items)} assignments.")
+    # Show progress bar while creating/updating assignments
+    total = len(items)
+    if total == 0:
+        typer.echo("No assignments to import.")
+        return
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Importing assignments...", total=total)
+        # Process in batches to avoid excessive downstream recalculations
+        batch_size = 25
+        for i in range(0, total, batch_size):
+            batch = items[i : i + batch_size]
+            a.upsert_assignments(batch)
+            progress.update(task, advance=len(batch))
+    typer.echo(f"Imported {total} assignments.")
 
 
 @app.command()
@@ -223,5 +247,22 @@ def apply(plan: str, dryrun: bool = typer.Option(False, "--dryrun")) -> None:
     if dryrun:
         typer.echo(f"Would create {len(assigned)} assignments.")
         return
-    a.upsert_assignments(assigned)
-    typer.echo(f"Created {len(assigned)} assignments.")
+    # Provide progress feedback while creating assignments
+    total = len(assigned)
+    if total == 0:
+        typer.echo("No assignments to create.")
+        return
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+        transient=True,
+    ) as progress:
+        task = progress.add_task("Creating assignments...", total=total)
+        batch_size = 25
+        for i in range(0, total, batch_size):
+            batch = assigned[i : i + batch_size]
+            a.upsert_assignments(batch)
+            progress.update(task, advance=len(batch))
+    typer.echo(f"Created {total} assignments.")
