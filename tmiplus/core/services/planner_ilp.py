@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, cast
+from typing import Any
 
 try:
     import pulp  # type: ignore[import-untyped]
@@ -99,21 +99,7 @@ def plan_ilp(
     for i in initiatives:
         allowed_by_init[i.name] = set(allowed_pool_members(adapter, i))
 
-    # Build dependency ready-after map from dependencies' EngineeringEnd
-    eng_end_by_name: dict[str, str] = {
-        i.name: cast(str, i.engineering_end) for i in initiatives if i.engineering_end
-    }
-    dep_ready_after: dict[str, str] = {}
-    for i in initiatives:
-        if i.depends_on:
-            ends_raw = [eng_end_by_name.get(dep) for dep in i.depends_on]
-            ends: list[str] = [
-                cast(str, e) for e in ends_raw if isinstance(e, str) and e
-            ]
-            if ends:
-                dep_ready_after[i.name] = max(ends)
-
-    # Create variables only when allowed, available, and within StartAfter window (with deps)
+    # Create variables only when allowed, available, and within StartAfter window (explicit only)
     for i in initiatives:
         if i.name not in target_pw:
             continue
@@ -121,14 +107,8 @@ def plan_ilp(
             if m.name not in allowed_by_init[i.name]:
                 continue
             for w in weeks:
-                # Respect explicit StartAfter and dependency constraint
-                effective_start_after = i.start_after
-                dep_after = dep_ready_after.get(i.name)
-                if dep_after and (
-                    not effective_start_after or dep_after > effective_start_after
-                ):
-                    effective_start_after = dep_after
-                if effective_start_after and effective_start_after > w:
+                # Respect explicit StartAfter (dependencies enforced by constraints below)
+                if i.start_after and i.start_after > w:
                     continue
                 if (m.name, w) in pto:
                     continue
@@ -248,16 +228,23 @@ def plan_ilp(
                 prob += y_t_pos[(i_name, w)] >= y_active[(i_name, w)]  # type: ignore[operator]
                 prob += y_t_neg[(i_name, w)] >= 0  # type: ignore[operator]
 
-    # Dependency non-overlap constraints: if j depends on i, they may not be active in the same week
-    for i in initiatives:
-        if not i.depends_on or i.name not in target_pw:
+    # Dependency precedence: for each dependency (dep -> child), child cannot be active
+    # in a week <= any week the dependency is still active. Enforce with cumulative constraint.
+    for child in initiatives:
+        if not child.depends_on or child.name not in target_pw:
             continue
-        for dep_name in i.depends_on:
+        for dep_name in child.depends_on:
             if dep_name not in target_pw:
-                # If dependency has no target, skip ILP linkage; StartAfter gating may still apply
                 continue
-            for w in weeks:
-                prob += y_active[(i.name, w)] + y_active[(dep_name, w)] <= 1  # type: ignore[operator]
+            # For each week index k, child[k] + sum_{t>=k} dep[t] <= 1
+            tail_sums: list[Any] = []
+            running = []
+            for w in reversed(weeks):
+                running.append(y_active[(dep_name, w)])
+                tail_sums.append(pulp.lpSum(running))  # type: ignore[attr-defined]
+            tail_sums = list(reversed(tail_sums))
+            for k, w in enumerate(weeks):
+                prob += y_active[(child.name, w)] + tail_sums[k] <= 1  # type: ignore[operator]
 
     # Objective: prioritize full completions (weighted by priority), then total assigned
     big = float(weights.complete_priority_weight)

@@ -107,9 +107,32 @@ class AirtableAdapter(DataAdapter):
             owner_pools = f.get("OwnerPools", [])
             if isinstance(owner_pools, str):
                 owner_pools = [owner_pools]
-            deps = f.get("DependsOn", [])
-            if isinstance(deps, str):
-                deps = [deps]
+            # DependsOn may be a list of record IDs (strings like 'rec...'),
+            # dicts with an 'id', or human-readable names depending on base config.
+            raw_deps = f.get("DependsOn", [])
+            if isinstance(raw_deps, str):
+                raw_deps = [raw_deps]
+            deps: list[str] = []
+            for d in raw_deps or []:
+                rec_id: str | None = None
+                if isinstance(d, str) and d.startswith("rec"):
+                    rec_id = d
+                elif isinstance(d, dict):
+                    did = d.get("id")
+                    if isinstance(did, str) and did.startswith("rec"):
+                        rec_id = did
+                if rec_id:
+                    try:
+                        rec = self.t_inits.get(rec_id)
+                        name_val = rec.get("fields", {}).get("Name")
+                        if isinstance(name_val, str) and name_val:
+                            deps.append(name_val)
+                            continue
+                    except Exception:
+                        pass
+                # Fallback: treat as plain string name
+                if isinstance(d, str) and d:
+                    deps.append(d)
             out.append(
                 Initiative(
                     name=f.get("Name", ""),
@@ -120,7 +143,7 @@ class AirtableAdapter(DataAdapter):
                     owner_pools=[Pool(p) for p in owner_pools if p],
                     required_by=f.get("RequiredBy"),
                     start_after=f.get("StartAfter"),
-                    depends_on=[str(x) for x in deps if x],
+                    depends_on=deps,
                     engineering_start=f.get("EngineeringStart"),
                     engineering_end=f.get("EngineeringEnd"),
                     rom_pw=(
