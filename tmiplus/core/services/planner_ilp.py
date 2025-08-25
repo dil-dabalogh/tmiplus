@@ -65,6 +65,14 @@ def plan_ilp(
         est = _effective_estimate_pw(i)
         if est is not None:
             target_pw[i.name] = est
+    # Enforce dependency presence: if an initiative depends on another that has no
+    # target (no estimate), drop the child from goals so it can't be planned alone
+    for i in initiatives:
+        if i.name in target_pw and i.depends_on:
+            for dep in i.depends_on:
+                if dep not in target_pw:
+                    target_pw.pop(i.name, None)
+                    break
     if not target_pw:
         return PlanResult(
             assignments=[],
@@ -245,6 +253,15 @@ def plan_ilp(
             tail_sums = list(reversed(tail_sums))
             for k, w in enumerate(weeks):
                 prob += y_active[(child.name, w)] + tail_sums[k] <= 1  # type: ignore[operator]
+
+    # Dependency completion: a child can be marked fully staffed only if all its dependencies are
+    # also fully staffed. Enforce z_child <= z_dep for each dependency.
+    for child in initiatives:
+        if not child.depends_on or child.name not in target_pw:
+            continue
+        for dep_name in child.depends_on:
+            if dep_name in z and child.name in z:
+                prob += z[child.name] <= z[dep_name]  # type: ignore[operator]
 
     # Objective: prioritize full completions (weighted by priority), then total assigned
     big = float(weights.complete_priority_weight)
