@@ -107,6 +107,9 @@ class AirtableAdapter(DataAdapter):
             owner_pools = f.get("OwnerPools", [])
             if isinstance(owner_pools, str):
                 owner_pools = [owner_pools]
+            deps = f.get("DependsOn", [])
+            if isinstance(deps, str):
+                deps = [deps]
             out.append(
                 Initiative(
                     name=f.get("Name", ""),
@@ -117,6 +120,9 @@ class AirtableAdapter(DataAdapter):
                     owner_pools=[Pool(p) for p in owner_pools if p],
                     required_by=f.get("RequiredBy"),
                     start_after=f.get("StartAfter"),
+                    depends_on=[str(x) for x in deps if x],
+                    engineering_start=f.get("EngineeringStart"),
+                    engineering_end=f.get("EngineeringEnd"),
                     rom_pw=(
                         f.get("ROM") if f.get("ROM") is not None else f.get("ROM_PW")
                     ),
@@ -142,6 +148,9 @@ class AirtableAdapter(DataAdapter):
                 "OwnerPools": [p.value for p in i.owner_pools],
                 "RequiredBy": i.required_by or None,
                 "StartAfter": i.start_after or None,
+                "DependsOn": i.depends_on or [],
+                "EngineeringStart": i.engineering_start or None,
+                "EngineeringEnd": i.engineering_end or None,
                 # Prefer new column name 'ROM'; fall back to legacy 'ROM_PW' for compatibility
                 "ROM": i.rom_pw,
                 # Prefer new column name 'Granular'; fall back to legacy 'Granular_PW' for compatibility

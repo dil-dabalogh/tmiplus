@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import cast
 
 from tmiplus.adapters.base import DataAdapter
 from tmiplus.core.models import Assignment, Initiative, Member
@@ -96,6 +97,20 @@ def plan_greedy(
         [i for i in initiatives if _effective_estimate_pw(i) is not None], key=_rank_key
     )
 
+    # Build dependency ready-after threshold using EngineeringEnd dates if present
+    eng_end_by_name: dict[str, str] = {
+        i.name: cast(str, i.engineering_end) for i in initiatives if i.engineering_end
+    }
+    dep_ready_after: dict[str, str] = {}
+    for i in initiatives:
+        if i.depends_on:
+            ends_raw = [eng_end_by_name.get(dep) for dep in i.depends_on]
+            ends: list[str] = [
+                cast(str, e) for e in ends_raw if isinstance(e, str) and e
+            ]
+            if ends:
+                dep_ready_after[i.name] = max(ends)
+
     # Iterate through weeks
     for wk in iter_weeks(dfrom, dto):
         wk_s = date_to_str(wk)
@@ -103,8 +118,14 @@ def plan_greedy(
         groups = _squad_groups(members)
 
         for init in plan_inits:
-            # Respect StartAfter
-            if init.start_after and init.start_after > wk_s:
+            # Respect StartAfter and dependency thresholds
+            effective_start_after = init.start_after
+            dep_after = dep_ready_after.get(init.name)
+            if dep_after and (
+                not effective_start_after or dep_after > effective_start_after
+            ):
+                effective_start_after = dep_after
+            if effective_start_after and effective_start_after > wk_s:
                 continue
 
             target = goal_map[init.name]

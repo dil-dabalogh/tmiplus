@@ -53,6 +53,10 @@ class Initiative(BaseModel):
     owner_pools: list[Pool] = Field(default_factory=list)
     required_by: str | None = None  # YYYY-MM-DD
     start_after: str | None = None  # YYYY-MM-DD
+    # Optional dependencies and engineering window metadata
+    depends_on: list[str] = Field(default_factory=list)
+    engineering_start: str | None = None  # YYYY-MM-DD (computed)
+    engineering_end: str | None = None  # YYYY-MM-DD (computed)
     rom_pw: float | None = Field(default=None, ge=0)
     granular_pw: float | None = Field(default=None, ge=0)
     ssot: str | None = None
