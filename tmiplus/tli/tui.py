@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from datetime import date
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import (
     Button,
@@ -12,9 +12,11 @@ from textual.widgets import (
     Footer,
     Header,
     Input,
+    Select,
     TabbedContent,
     TabPane,
 )
+from textual_datepicker import DatePicker
 
 from tmiplus.core.services.csv_io import (
     read_assignments_csv,
@@ -26,25 +28,10 @@ from tmiplus.core.services.csv_io import (
     write_members_csv,
     write_pto_csv,
 )
-from tmiplus.core.services.planner_greedy import (
-    PlanResult as GreedyPlanResult,
-)
-from tmiplus.core.services.planner_greedy import (
-    plan_greedy,
-)
-from tmiplus.core.services.planner_ilp import (
-    PlanResult as ILPPlanResult,
-)
-from tmiplus.core.services.planner_ilp import (
-    plan_ilp,
-)
 from tmiplus.core.services.reports import (
     budget_distribution,
 )
-from tmiplus.core.util.dates import (
-    parse_date,
-    week_end_from_start_str,
-)
+from tmiplus.core.util.dates import parse_date
 from tmiplus.tli.context import get_adapter
 
 
@@ -61,8 +48,16 @@ def _fill_table(
 class TmiTui(App):
     CSS = """
     Screen { overflow: auto; }
-    #toolbar { dock: top; }
+    #toolbar { dock: top; padding: 1 2; }
     #content { dock: top; height: 1fr; }
+    .title { color: cyan; text-style: bold; }
+    .accent { color: magenta; }
+    .btn-primary { background: #005f87; color: white; }
+    .btn-success { background: #2d7d46; color: white; }
+    .btn-warning { background: #b58900; color: black; }
+    .btn-danger { background: #d33682; color: white; }
+    .panel { padding: 1 2; }
+    .controls { padding: 0 2; }
     """
 
     show_tooltip = reactive("")
@@ -70,37 +65,154 @@ class TmiTui(App):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Horizontal(id="toolbar"):
-            yield Button("Refresh", id="refresh")
-            yield Button("Export CSV", id="export")
-            yield Button("Import CSV", id="import")
-            yield Input(placeholder="Date from (YYYY-MM-DD)", id="dfrom")
-            yield Input(placeholder="Date to (YYYY-MM-DD)", id="dto")
-            yield Button("Plan (Greedy)", id="plan_greedy")
-            yield Button("Plan (ILP)", id="plan_ilp")
+            yield Button("Refresh", id="refresh", classes="btn-success")
+            yield Button("Export CSV", id="export", classes="btn-primary")
+            yield Button("Import CSV", id="import", classes="btn-warning")
         with Container(id="content"):
             with TabbedContent():
-                yield TabPane("Members", id="tab_members")
-                yield TabPane("Initiatives", id="tab_inits")
-                yield TabPane("Assignments", id="tab_assigns")
-                yield TabPane("PTO", id="tab_pto")
-                yield TabPane("Reports", id="tab_reports")
+                # Home page
+                with TabPane("Home", id="tab_home"):
+                    with Vertical(classes="panel"):
+                        yield Button(
+                            "Members", id="home_members", classes="btn-primary"
+                        )
+                        yield Button(
+                            "Initiatives", id="home_inits", classes="btn-primary"
+                        )
+                        yield Button(
+                            "Assignments", id="home_assigns", classes="btn-primary"
+                        )
+                        yield Button("PTO", id="home_pto", classes="btn-primary")
+                        yield Button(
+                            "Reports", id="home_reports", classes="btn-primary"
+                        )
+
+                # Members
+                with TabPane("Members", id="tab_members"):
+                    with Horizontal(classes="controls"):
+                        yield Input(placeholder="Filter...", id="members_filter")
+                        yield Select([], prompt="Sort column", id="members_sort_col")
+                        yield Select(
+                            [("asc", "Ascending"), ("desc", "Descending")],
+                            id="members_sort_dir",
+                        )
+                        yield Button("Apply", id="members_apply", classes="btn-success")
+                        yield Button("Clear", id="members_clear", classes="btn-danger")
+                    yield DataTable(id="members_table")
+
+                # Initiatives
+                with TabPane("Initiatives", id="tab_inits"):
+                    with Horizontal(classes="controls"):
+                        yield Input(placeholder="Filter...", id="inits_filter")
+                        yield Select([], prompt="Sort column", id="inits_sort_col")
+                        yield Select(
+                            [("asc", "Ascending"), ("desc", "Descending")],
+                            id="inits_sort_dir",
+                        )
+                        yield Button("Apply", id="inits_apply", classes="btn-success")
+                        yield Button("Clear", id="inits_clear", classes="btn-danger")
+                    yield DataTable(id="inits_table")
+
+                # Assignments
+                with TabPane("Assignments", id="tab_assigns"):
+                    with Horizontal(classes="controls"):
+                        yield Input(placeholder="Filter...", id="assigns_filter")
+                        yield Select([], prompt="Sort column", id="assigns_sort_col")
+                        yield Select(
+                            [("asc", "Ascending"), ("desc", "Descending")],
+                            id="assigns_sort_dir",
+                        )
+                        yield Button("Apply", id="assigns_apply", classes="btn-success")
+                        yield Button("Clear", id="assigns_clear", classes="btn-danger")
+                    with Horizontal(classes="controls"):
+                        yield Input(
+                            placeholder="Plan from YYYY-MM-DD", id="assign_from"
+                        )
+                        yield Input(placeholder="Plan to YYYY-MM-DD", id="assign_to")
+                        yield Button(
+                            "Plan (Greedy)",
+                            id="assign_plan_greedy",
+                            classes="btn-primary",
+                        )
+                        yield Button(
+                            "Plan (ILP)", id="assign_plan_ilp", classes="btn-primary"
+                        )
+                    yield DataTable(id="assigns_table")
+
+                # PTO
+                with TabPane("PTO", id="tab_pto"):
+                    with Horizontal(classes="controls"):
+                        yield Input(placeholder="Filter...", id="pto_filter")
+                        yield Select([], prompt="Sort column", id="pto_sort_col")
+                        yield Select(
+                            [("asc", "Ascending"), ("desc", "Descending")],
+                            id="pto_sort_dir",
+                        )
+                        yield Button("Apply", id="pto_apply", classes="btn-success")
+                        yield Button("Clear", id="pto_clear", classes="btn-danger")
+                    yield DataTable(id="pto_table")
+
+                # Reports
+                with TabPane("Reports", id="tab_reports"):
+                    with Horizontal(classes="controls"):
+                        dp_from = DatePicker()
+                        dp_from.id = "report_from_dp"
+                        yield dp_from
+                        dp_to = DatePicker()
+                        dp_to.id = "report_to_dp"
+                        yield dp_to
+                        yield Button("Run", id="report_run", classes="btn-success")
+                    yield DataTable(id="reports_table")
         yield Footer()
 
     def on_mount(self) -> None:
         self.adapter = get_adapter()
         # Tables
-        self.members_table = DataTable()
-        self.inits_table = DataTable()
-        self.assigns_table = DataTable()
-        self.pto_table = DataTable()
-        self.reports_table = DataTable()
-        # Insert tables into panes
-        self.query_one("#tab_members").mount(self.members_table)
-        self.query_one("#tab_inits").mount(self.inits_table)
-        self.query_one("#tab_assigns").mount(self.assigns_table)
-        self.query_one("#tab_pto").mount(self.pto_table)
-        self.query_one("#tab_reports").mount(self.reports_table)
+        self.members_table = self.query_one("#members_table", DataTable)
+        self.inits_table = self.query_one("#inits_table", DataTable)
+        self.assigns_table = self.query_one("#assigns_table", DataTable)
+        self.pto_table = self.query_one("#pto_table", DataTable)
+        self.reports_table = self.query_one("#reports_table", DataTable)
         self.refresh_all()
+        # Initialize report date inputs and sort select options
+        today = date.today()
+        q = (today.month - 1) // 3 + 1
+        start_month = 3 * (q - 1) + 1
+        end_month = start_month + 2
+        start = date(today.year, start_month, 1)
+        end_day = (
+            31
+            if end_month in (1, 3, 5, 7, 8, 10, 12)
+            else (
+                29
+                if today.year % 4 == 0 and end_month == 2
+                else (28 if end_month == 2 else 30)
+            )
+        )
+        end = date(today.year, end_month, end_day)
+        try:
+            self.query_one("#report_from_dp", DatePicker).value = start
+            self.query_one("#report_to_dp", DatePicker).value = end
+        except Exception:
+            pass
+        self.query_one("#members_sort_col", Select).set_options(
+            [(c, c) for c in ["Name", "Pool", "Hours", "Squad", "Active"]]
+        )
+        self.query_one("#inits_sort_col", Select).set_options(
+            [
+                (c, c)
+                for c in ["Name", "Phase", "State", "Priority", "Budget", "OwnerPools"]
+            ]
+        )
+        self.query_one("#assigns_sort_col", Select).set_options(
+            [
+                (c, c)
+                for c in ["Member", "Initiative", "WeekStart", "WeekEnd", "CapacityPW"]
+            ]
+        )
+        self.query_one("#pto_sort_col", Select).set_options(
+            [(c, c) for c in ["Member", "Type", "WeekStart", "WeekEnd"]]
+        )
 
     def refresh_all(self) -> None:
         # Members
@@ -223,33 +335,42 @@ class TmiTui(App):
             except Exception:
                 pass
             self.refresh_all()
-        elif bid in ("plan_greedy", "plan_ilp"):
-            dfrom_input = self.query_one("#dfrom", Input).value or ""
-            dto_input = self.query_one("#dto", Input).value or ""
-            if not dfrom_input or not dto_input:
+        # Dashboard navigation buttons
+        elif bid in (
+            "home_members",
+            "home_inits",
+            "home_assigns",
+            "home_pto",
+            "home_reports",
+        ):
+            tab_id = bid.replace("home_", "tab_")
+            self.query_one(TabbedContent).active = tab_id
+        # Reports run using date pickers
+        elif bid == "report_run":
+            try:
+                dfrom = self.query_one("#report_from_dp", DatePicker).value
+                dto = self.query_one("#report_to_dp", DatePicker).value
+            except Exception:
                 return
-            dfrom = parse_date(dfrom_input)
-            dto = parse_date(dto_input)
-            recreate = False
-            pr: GreedyPlanResult | ILPPlanResult
-            if bid == "plan_greedy":
-                pr = plan_greedy(self.adapter, dfrom, dto, recreate=recreate)
-            else:
-                pr = plan_ilp(self.adapter, dfrom, dto, recreate=recreate, msg=False)
-            # Apply results to assignments table (preview only; not writing back)
+            if not dfrom or not dto:
+                return
+            # DatePicker may return date or string; normalize
+            if not isinstance(dfrom, date):
+                try:
+                    dfrom = parse_date(str(dfrom))
+                except Exception:
+                    return
+            if not isinstance(dto, date):
+                try:
+                    dto = parse_date(str(dto))
+                except Exception:
+                    return
+            dist = budget_distribution(self.adapter, dfrom, dto)
+            total = sum(dist.values()) or 1.0
             _fill_table(
-                self.assigns_table,
-                ["Member", "Initiative", "WeekStart", "WeekEnd", "CapacityPW"],
-                (
-                    (
-                        a.member_name,
-                        a.initiative_name,
-                        a.week_start,
-                        a.week_end or week_end_from_start_str(a.week_start),
-                        "" if a.capacity_pw is None else f"{a.capacity_pw}",
-                    )
-                    for a in pr.assignments
-                ),
+                self.reports_table,
+                ["Category", "PW", "%"],
+                ((k, f"{v:.2f}", f"{(v/total*100):.1f}%") for k, v in dist.items()),
             )
 
 

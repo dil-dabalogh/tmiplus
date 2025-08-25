@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
+from typing import Optional  # noqa: F401 (placeholder for future use)
 
 import typer
 from rich.console import Console
@@ -14,7 +15,6 @@ from tmiplus.tli.initiatives import app as initiatives_app
 from tmiplus.tli.members import app as members_app
 from tmiplus.tli.pto import app as pto_app
 from tmiplus.tli.reports import app as reports_app
-from tmiplus.tli.tui import run_tui
 
 app = typer.Typer(add_completion=False)
 console = Console()
@@ -63,4 +63,5 @@ def version() -> None:
 @app.command()
 def tui() -> None:
     """Launch the Textual TUI."""
-    run_tui()
+    console.print("TUI is temporarily disabled. Coming back soon.")
+    raise typer.Exit(code=0)
