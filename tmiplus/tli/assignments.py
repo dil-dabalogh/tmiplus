@@ -36,8 +36,8 @@ console = Console()
 app = typer.Typer(help="Manage assignments")
 
 
-@app.command()
-def list() -> None:
+@app.command(name="list")
+def list_cmd() -> None:
     a = get_adapter()
     with Progress(
         SpinnerColumn(),
@@ -162,6 +162,43 @@ def _print_staffed_initiatives(
         )
 
 
+def _print_plan_summary(a: DataAdapter, plan_path: str) -> None:
+    doc = load_yaml(plan_path)
+    assigned: list[Assignment] = []
+    for x in doc.get("assignments", []):
+        assigned.append(
+            Assignment(
+                member_name=x.get("member", ""),
+                initiative_name=x.get("initiative", ""),
+                week_start=x.get("week_start", ""),
+                capacity_pw=x.get("capacity_pw"),
+            )
+        )
+    _print_staffed_initiatives(a, assigned, title="Staffed Initiatives (from plan)")
+    unstaffed = doc.get("unstaffed", [])
+    if unstaffed:
+        print_table(
+            "Unstaffed Initiatives",
+            ["Initiative", "Required PW", "Available PW", "Reason"],
+            [
+                [
+                    x.get("initiative", ""),
+                    x.get("required_pw", ""),
+                    x.get("available_pw", ""),
+                    x.get("reason", ""),
+                ]
+                for x in unstaffed
+            ],
+        )
+
+
+@app.command()
+def summary(plan: str) -> None:
+    """Summarize an existing plan file (YAML/JSON)."""
+    a = get_adapter()
+    _print_plan_summary(a, plan)
+
+
 @app.command()
 def plan(
     dfrom: str,
@@ -172,41 +209,8 @@ def plan(
     verbose: bool = typer.Option(
         False, "--verbose", help="Show detailed planning diagnostics"
     ),
-    summary: str | None = typer.Option(
-        None, "--summary", help="Summarize existing plan file and exit"
-    ),
 ) -> None:
     a = get_adapter()
-    # Summary-only mode
-    if summary:
-        doc = load_yaml(summary)
-        assigned = []
-        for x in doc.get("assignments", []):
-            assigned.append(
-                Assignment(
-                    member_name=x.get("member", ""),
-                    initiative_name=x.get("initiative", ""),
-                    week_start=x.get("week_start", ""),
-                    capacity_pw=x.get("capacity_pw"),
-                )
-            )
-        _print_staffed_initiatives(a, assigned, title="Staffed Initiatives (from plan)")
-        unstaffed = doc.get("unstaffed", [])
-        if unstaffed:
-            print_table(
-                "Unstaffed Initiatives",
-                ["Initiative", "Required PW", "Available PW", "Reason"],
-                [
-                    [
-                        x.get("initiative", ""),
-                        x.get("required_pw", ""),
-                        x.get("available_pw", ""),
-                        x.get("reason", ""),
-                    ]
-                    for x in unstaffed
-                ],
-            )
-        return
     pr: GreedyPlanResult | ILPPlanResult | ILPPrefPlanResult
     if verbose:
         with Progress(

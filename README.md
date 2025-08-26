@@ -109,6 +109,12 @@ tmi initiatives export --out ./initiatives.csv
   - Enforces finish-to-start sequencing and can optionally run an idle-fill pass to use spare capacity.
   - Tunable via `planner.ilp_pref` in the config (weights for utilization, completion, breadth, pref_squad bonus, deadlines, roadmap target, etc.).
 
+Print plan summary:
+
+```bash
+tmi assignment summary PATH/TO/PLAN.yaml
+```
+
 #### ILP configuration (in `~/.tmi.yml`)
 
 ```yaml
