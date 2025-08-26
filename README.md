@@ -1,9 +1,11 @@
-# TMI Resource Planner (prototype)
+# Too Much Infromation (TMI) Resource Planner
 
 A Typer-based CLI to manage initiatives, members, PTO, weekly assignments, planning, and reporting,
 with Airtable as the initial data layer and a memory adapter for tests/demos.
 
 ## Quickstart
+
+### Install dev version
 
 ```bash
 # 1) Install (dev):
@@ -38,9 +40,7 @@ The command below is auto-updated on each release:
 ```
 <!-- INSTALL_LATEST_END -->
 
-### Airtable Structure (Manual, non-expert guide)
-
-Create a base named **TMI Resource Planner** with **four tables**:
+### Required DB structure
 
 **Members**
 - Name (Primary, text, unique)
@@ -123,10 +123,6 @@ planner:
       init_span_transition_penalty: 1.0      # Penalize initiative week-to-week start/stop transitions
       init_active_week_penalty: 0.25         # Penalize each active week to compress initiative span
 ```
-
-Notes:
-- Increase penalties to reduce fragmentation; if too high, throughput/full completions may drop.
-- Decrease penalties if solver over-concentrates or misses feasible completions.
 
 ### Tooling
 
