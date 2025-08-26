@@ -36,9 +36,10 @@ The command below is auto-updated on each release:
 
 <!-- INSTALL_LATEST_START -->
 ```bash
-pipx install https://github.com/dil-dabalogh/tmiplus/releases/download/v0.0.5/tmiplus-0.0.5-py3-none-any.whl
+pipx install https://github.com/dil-dabalogh/tmiplus/releases/download/v0.0.6/tmiplus-0.0.6-py3-none-any.whl
 ```
 <!-- INSTALL_LATEST_END -->
+
 
 
 ### Required DB structure
