@@ -28,6 +28,16 @@ tmi config show
 tmi health check
 ```
 
+### Install latest release (pipx)
+
+The command below is auto-updated on each release:
+
+<!-- INSTALL_LATEST_START -->
+```bash
+# No release yet – this block will be replaced on first tagged release
+```
+<!-- INSTALL_LATEST_END -->
+
 ### Airtable Structure (Manual, non-expert guide)
 
 Create a base named **TMI Resource Planner** with **four tables**:
