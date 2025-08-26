@@ -92,6 +92,12 @@ tmi initiatives export --out ./initiatives.csv
   - All ILP solver and weighting parameters are read from config at `~/.tmi.yml` under `planner.ilp`.
   - No CLI flags for ILP tuning; edit config instead and re-run.
 
+- ILP (preference-aware):
+  - New algorithm key: `--algorithm ilp-pref`
+  - Maximizes utilization, respects hard dependencies and OwnerPools, and treats Preferred Squad as a soft preference.
+  - Enforces finish-to-start sequencing and can optionally run an idle-fill pass to use spare capacity.
+  - Tunable via `planner.ilp_pref` in the config (weights for utilization, completion, breadth, pref_squad bonus, deadlines, roadmap target, etc.).
+
 #### ILP configuration (in `~/.tmi.yml`)
 
 ```yaml

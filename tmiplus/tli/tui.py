@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import date
+from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
@@ -36,7 +37,7 @@ from tmiplus.tli.context import get_adapter
 
 
 def _fill_table(
-    table: DataTable, columns: list[str], rows: Iterable[Iterable[object]]
+    table: DataTable[Any], columns: list[str], rows: Iterable[Iterable[object]]
 ) -> None:
     table.clear(columns=True)
     for c in columns:
@@ -45,7 +46,7 @@ def _fill_table(
         table.add_row(*[str(x) for x in r])
 
 
-class TmiTui(App):
+class TmiTui(App[Any]):
     CSS = """
     Screen { overflow: auto; }
     #toolbar { dock: top; padding: 1 2; }

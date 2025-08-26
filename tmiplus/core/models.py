@@ -51,6 +51,7 @@ class Initiative(BaseModel):
     priority: int = Field(..., ge=1, le=5)
     budget: BudgetCategory
     owner_pools: list[Pool] = Field(default_factory=list)
+    pref_squad: str | None = None
     required_by: str | None = None  # YYYY-MM-DD
     start_after: str | None = None  # YYYY-MM-DD
     # Optional dependencies and engineering window metadata

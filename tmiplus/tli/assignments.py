@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import typer
 from rich.console import Console
 from rich.progress import (
@@ -11,13 +13,20 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from tmiplus.adapters.base import DataAdapter
 from tmiplus.core.models import Assignment
 from tmiplus.core.services.csv_io import read_assignments_csv, write_assignments_csv
 from tmiplus.core.services.planner_greedy import PlanResult as GreedyPlanResult
 from tmiplus.core.services.planner_greedy import plan_greedy
 from tmiplus.core.services.planner_ilp import PlanResult as ILPPlanResult
 from tmiplus.core.services.planner_ilp import plan_ilp
-from tmiplus.core.util.dates import parse_date
+from tmiplus.core.services.planner_ilp_pref import (
+    PlanResult as ILPPrefPlanResult,
+)
+from tmiplus.core.services.planner_ilp_pref import (
+    plan_ilp_pref,
+)
+from tmiplus.core.util.dates import parse_date, week_end_from_start_str
 from tmiplus.core.util.io import load_yaml, save_json, save_yaml
 from tmiplus.tli.context import get_adapter
 from tmiplus.tli.helpers import print_table
@@ -95,6 +104,64 @@ def export(out: str = typer.Option(..., "--out")) -> None:
     typer.echo(f"Wrote {out}.")
 
 
+def _print_staffed_initiatives(
+    a: DataAdapter,
+    assignments: Sequence[Assignment],
+    title: str = "Staffed Initiatives",
+) -> None:
+    members = a.list_members()
+    member_capacity = {m.name: m.weekly_capacity_pw for m in members}
+    inits = {i.name: i for i in a.list_initiatives()}
+
+    def _eff_est(name: str) -> float | None:
+        ini = inits.get(name)
+        if not ini:
+            return None
+        if ini.granular_pw is not None:
+            return float(ini.granular_pw)
+        if ini.rom_pw is not None:
+            return float(ini.rom_pw)
+        return None
+
+    assigned_by_init: dict[str, float] = {}
+    eng_start_by_init: dict[str, str] = {}
+    eng_end_by_init: dict[str, str] = {}
+    for asg in assignments:
+        cap = getattr(asg, "capacity_pw", None)
+        member = getattr(asg, "member_name", getattr(asg, "member", ""))
+        name = getattr(asg, "initiative_name", getattr(asg, "initiative", ""))
+        if cap is None:
+            cap = member_capacity.get(member, 0.0)
+        assigned_by_init[name] = assigned_by_init.get(name, 0.0) + float(cap or 0.0)
+        ws = getattr(asg, "week_start", "")
+        we = getattr(asg, "week_end", None) or (
+            week_end_from_start_str(ws) if ws else ""
+        )
+        cur_s = eng_start_by_init.get(name)
+        cur_e = eng_end_by_init.get(name)
+        if ws and (cur_s is None or ws < cur_s):
+            eng_start_by_init[name] = ws
+        if we and (cur_e is None or we > cur_e):
+            eng_end_by_init[name] = we
+
+    rows_staffed = [
+        [
+            name,
+            ("-" if _eff_est(name) is None else f"{_eff_est(name):.1f}"),
+            f"{assigned_by_init[name]:.1f}",
+            eng_start_by_init.get(name, "-"),
+            eng_end_by_init.get(name, "-"),
+        ]
+        for name in sorted(assigned_by_init.keys())
+    ]
+    if rows_staffed:
+        print_table(
+            title,
+            ["Initiative", "Required PW", "Assigned PW", "EngStart", "EngEnd"],
+            rows_staffed,
+        )
+
+
 @app.command()
 def plan(
     dfrom: str,
@@ -105,9 +172,42 @@ def plan(
     verbose: bool = typer.Option(
         False, "--verbose", help="Show detailed planning diagnostics"
     ),
+    summary: str | None = typer.Option(
+        None, "--summary", help="Summarize existing plan file and exit"
+    ),
 ) -> None:
     a = get_adapter()
-    pr: GreedyPlanResult | ILPPlanResult
+    # Summary-only mode
+    if summary:
+        doc = load_yaml(summary)
+        assigned = []
+        for x in doc.get("assignments", []):
+            assigned.append(
+                Assignment(
+                    member_name=x.get("member", ""),
+                    initiative_name=x.get("initiative", ""),
+                    week_start=x.get("week_start", ""),
+                    capacity_pw=x.get("capacity_pw"),
+                )
+            )
+        _print_staffed_initiatives(a, assigned, title="Staffed Initiatives (from plan)")
+        unstaffed = doc.get("unstaffed", [])
+        if unstaffed:
+            print_table(
+                "Unstaffed Initiatives",
+                ["Initiative", "Required PW", "Available PW", "Reason"],
+                [
+                    [
+                        x.get("initiative", ""),
+                        x.get("required_pw", ""),
+                        x.get("available_pw", ""),
+                        x.get("reason", ""),
+                    ]
+                    for x in unstaffed
+                ],
+            )
+        return
+    pr: GreedyPlanResult | ILPPlanResult | ILPPrefPlanResult
     if verbose:
         with Progress(
             SpinnerColumn(),
@@ -122,6 +222,17 @@ def plan(
             elif algorithm == "ilp":
                 try:
                     pr = plan_ilp(
+                        a,
+                        parse_date(dfrom),
+                        parse_date(dto),
+                        recreate=recreate,
+                        msg=verbose,
+                    )
+                except RuntimeError as exc:
+                    raise typer.BadParameter(str(exc)) from exc
+            elif algorithm == "ilp-pref":
+                try:
+                    pr = plan_ilp_pref(
                         a,
                         parse_date(dfrom),
                         parse_date(dto),
@@ -155,10 +266,25 @@ def plan(
                     )
                 except RuntimeError as exc:
                     raise typer.BadParameter(str(exc)) from exc
+            elif algorithm == "ilp-pref":
+                try:
+                    pr = plan_ilp_pref(
+                        a,
+                        parse_date(dfrom),
+                        parse_date(dto),
+                        recreate=recreate,
+                        msg=verbose,
+                    )
+                except RuntimeError as exc:
+                    raise typer.BadParameter(str(exc)) from exc
             else:
                 raise typer.BadParameter("Invalid algorithm. Use 'greedy' or 'ilp'.")
             progress.update(task, description="Finalizing plan...")
-    reason = "PlannerILP" if algorithm == "ilp" else "PlannerGreedy"
+    reason = (
+        "PlannerILPPref"
+        if algorithm == "ilp-pref"
+        else ("PlannerILP" if algorithm == "ilp" else "PlannerGreedy")
+    )
     plan_doc = {
         "version": 1,
         "window": {"from": dfrom, "to": dto},
@@ -184,6 +310,12 @@ def plan(
         # Default to YAML when extension is .yaml/.yml or anything else
         save_yaml(plan_doc, out)
     typer.echo(f"Wrote plan to {out}.")
+
+    # Display staffed initiatives table (required vs assigned, EngStart/End)
+    try:
+        _print_staffed_initiatives(a, pr.assignments)
+    except Exception:
+        pass
 
     if verbose:
         # Show summary table

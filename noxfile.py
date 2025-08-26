@@ -11,7 +11,7 @@ def lint(session: nox.Session) -> None:
 @nox.session
 def typecheck(session: nox.Session) -> None:
     session.install(".[dev]")
-    session.run("mypy", ".")
+    session.run("mypy", "--config-file", "mypy.ini", ".")
 
 
 @nox.session
@@ -25,5 +25,5 @@ def all(session: nox.Session) -> None:
     session.install(".[dev]")
     session.run("ruff", "check", ".")
     session.run("black", "--check", ".")
-    session.run("mypy", ".")
+    session.run("mypy", "--config-file", "mypy.ini", ".")
     session.run("pytest", "--maxfail=1", "--disable-warnings", "-q")
