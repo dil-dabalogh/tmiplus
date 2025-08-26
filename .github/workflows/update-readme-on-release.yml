@@ -2,7 +2,8 @@ name: Update README on Release
 
 on:
   workflow_run:
-    workflows: [ Build and Release ]
+    # Match the *name* of the workflow or the file path. Using file path is safer.
+    workflows: [ ".github/workflows/release.yml", "Build and Release on Tag" ]
     types: [ completed ]
 
 permissions:
@@ -10,6 +11,7 @@ permissions:
 
 jobs:
   update-readme:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout default branch
@@ -17,6 +19,18 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.repository.default_branch }}
+
+      - name: Fetch all tags to resolve tag for this run
+        run: |
+          git fetch --tags --force --prune
+          echo "HEAD_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+          TAG=$(git tag --points-at "${{ github.event.workflow_run.head_sha }}")
+          if [ -z "$TAG" ]; then
+            echo "Failed to resolve tag for head_sha=${{ github.event.workflow_run.head_sha }}"
+            exit 1
+          fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "Resolved TAG=$TAG for SHA=${{ github.event.workflow_run.head_sha }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,7 +40,7 @@ jobs:
       - name: Update README install command
         run: |
           python -m pip install --upgrade pip
-          python scripts/update_readme_install.py "${{ github.event.release.tag_name }}"
+          python scripts/update_readme_install.py "$TAG"
 
       - name: Commit changes
         run: |
@@ -38,5 +52,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "docs(README): update install command for ${{ github.event.release.tag_name }}"
+          git commit -m "docs(README): update install command for $TAG [skip ci]"
           git push origin HEAD:${{ github.event.repository.default_branch }}
